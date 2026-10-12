@@ -9,7 +9,7 @@
    TEACHER SETUP: paste your Google Apps Script web-app URL here.
    Leave it empty ("") to play without saving to the spreadsheet.
    ============================================================ */
-var SHEET_URL = "https://script.google.com/macros/s/AKfycbw5VfRAuHRU6IHPqBzptR2Wh4ge_ImwtPqO3Xiyc8_QLPQa9XfqSHy5UAXWzOgCVURXoQ/exec";
+var SHEET_URL = "https://script.google.com/macros/s/AKfycbyjW8hLrK7vyCHLidteMitLCa4ldiGdzaFS5z0xmaPexgUoqAzrDQH8A7v8HwdqcekAQQ/exec";
 
 /* Classes and divisions shown in the login dropdowns – edit these lists to match your school. */
 var CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
@@ -18,282 +18,185 @@ var SETUP_OK = true;
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;600&display=swap">
 <style>
-/* Layout: sticky score bar → one stage at a time (login → starter → main → plenary → results).
+/* Layout: slim score bar, then one simple screen at a time (login → starter → main → plenary → results).
    Single bright look for lab projectors: navy "circuit board" with amber, teal, coral and blue accents. */
 :root {
   color-scheme: light;
   --bg: #F2F4F8; --paper: #FFFFFF; --ink: #121A2E; --muted: #57617A; --line: #D7DCE8;
-  --night: #14213D; --dusk: #1F3A68; --sun: #FCA311; --sun-soft: #FFF1D6;
+  --night: #14213D; --dusk: #1F3A68; --sun: #FCA311;
   --t1: #2A9D8F; --t1-soft: #DCF3F0;
   --t2: #E76F51; --t2-soft: #FCE5DE;
   --t3: #3A6FD8; --t3-soft: #E1EAFB;
   --t4: #7A55C7; --t4-soft: #EEE7FA;
-  --good: #1F8A5B; --good-soft: #DDF4E8; --bad: #C2412D; --bad-soft: #FBE3DE;
+  --good: #1F8A5B; --good-soft: #DDF4E8; --bad: #C2412D; --bad-soft: #FBE3DE; --info-soft: #FFF1D6;
   --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
   --font-body: "Lexend", "Segoe UI", system-ui, sans-serif;
-  --font-code: "JetBrains Mono", Consolas, monospace;
   --tc: var(--t1); --tc-soft: var(--t1-soft);
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; min-height: 100vh; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.5; min-height: 100vh; }
 button { font: inherit; }
-a { color: var(--t3); font-weight: 600; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-inline: 20px; padding-block: 22px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .wrap > * { min-width: 0; }
-.btn:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 
-/* score bar */
-.bar { position: sticky; top: 0; z-index: 10; background: var(--night); color: #FFFFFF; box-shadow: 0 4px 16px rgba(20,33,61,.3); }
-.bar-in { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-.logo { font-family: var(--font-display); font-weight: 700; font-size: 23px; display: flex; align-items: center; gap: 8px; }
-.logo i { font-style: normal; width: 30px; height: 30px; border-radius: 9px; background: var(--sun); color: var(--night); display: grid; place-items: center; font-size: 15px; }
-.who { color: #C6D0E6; font-size: 14px; }
-.who b { color: #FFFFFF; }
-.stages { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
-.stages span { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.1); color: #9FB0D3; }
-.stages span.on { background: var(--sun); color: var(--night); }
-.stages span.done { background: rgba(255,255,255,.22); color: #FFFFFF; }
-.stages span.done::before { content: "✓ "; }
-.points { position: relative; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 4px 14px 4px 6px; }
-.points .coin { width: 28px; height: 28px; border-radius: 50%; background: var(--sun); display: grid; place-items: center; color: var(--night); font-weight: 700; }
-.points b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; min-width: 2.5ch; }
-.points small { color: #9FB0D3; }
-.fly { position: absolute; right: 8px; top: -4px; font-weight: 700; color: var(--sun); pointer-events: none; font-family: var(--font-display); font-size: 20px; }
+/* bar */
+.bar { position: sticky; top: 0; z-index: 10; background: var(--night); color: #FFFFFF; }
+.bar-in { max-width: 1000px; margin: 0 auto; padding: 10px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.logo { font-family: var(--font-display); font-weight: 700; font-size: 22px; }
+.who { color: #C9D3EA; font-size: 15px; }
+.steps { display: flex; gap: 6px; margin-left: auto; }
+.steps span { width: 34px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.18); }
+.steps span.done { background: #FFFFFF; } .steps span.on { background: var(--sun); }
+.points { position: relative; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border-radius: 999px; padding: 4px 14px 4px 6px; }
+.coin { width: 28px; height: 28px; border-radius: 50%; background: var(--sun); display: grid; place-items: center; color: var(--night); font-weight: 700; }
+.points b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.fly { position: absolute; right: 6px; top: -6px; font-weight: 700; color: var(--sun); pointer-events: none; font-family: var(--font-display); font-size: 20px; }
 
 /* shared */
-.stage-head { display: flex; align-items: center; gap: 16px; background: var(--tc); color: #FFFFFF; border-radius: 22px; padding: 18px 22px; position: relative; overflow: hidden; }
-.stage-head::after { content: ""; position: absolute; right: -40px; top: -40px; width: 170px; height: 170px; border-radius: 50%; border: 26px solid rgba(255,255,255,.14); }
-.stage-head .big { font-family: var(--font-display); font-weight: 700; font-size: 56px; line-height: .8; }
-.stage-head .lbl { font-family: var(--font-code); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .9; }
-.stage-head h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 3vw, 30px); margin: 2px 0 0; line-height: 1.1; text-wrap: balance; }
-.stage-head p { margin: 4px 0 0; opacity: .94; max-width: 62ch; }
-.card { background: var(--paper); border: 2px solid var(--line); border-radius: 22px; padding: 20px 22px; min-width: 0; }
-.card h3 { font-family: var(--font-display); font-weight: 700; font-size: 21px; margin: 0 0 10px; }
-.card h3 small { font-family: var(--font-body); font-weight: 400; color: var(--muted); font-size: 14px; }
-.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
-.stack { display: grid; gap: 16px; min-width: 0; }
-.btn { font-weight: 600; font-size: 16px; border-radius: 14px; padding: 12px 22px; cursor: pointer; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); }
+.head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tag { font-size: 14px; font-weight: 600; background: var(--tc); color: #FFFFFF; padding: 3px 12px; border-radius: 999px; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; line-height: 1.15; text-wrap: balance; }
+.card { background: var(--paper); border: 2px solid var(--line); border-radius: 22px; padding: 22px; min-width: 0; }
+.line { font-size: 19px; margin: 8px 0 0; max-width: 60ch; }
+.btn { font-weight: 600; font-size: 17px; border-radius: 14px; padding: 12px 24px; cursor: pointer; border: 2px solid var(--line); background: var(--paper); color: var(--ink); text-decoration: none; display: inline-block; }
 .btn.primary { background: var(--tc); border-color: var(--tc); color: #FFFFFF; box-shadow: 0 4px 0 rgba(18,26,46,.25); }
 .btn.primary:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(18,26,46,.25); }
-.btn.ghost { border-color: var(--line); color: var(--muted); font-weight: 400; font-size: 15px; }
+.btn.tm { background: var(--night); border-color: var(--night); color: #FFFFFF; }
 .btn:disabled { background: var(--line); border-color: var(--line); color: var(--muted); box-shadow: none; cursor: not-allowed; }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
-.note { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
-.msg { border-radius: 14px; padding: 10px 14px; font-weight: 600; margin-top: 12px; }
-.msg.good { background: var(--good-soft); color: #145C3D; border: 2px solid var(--good); }
-.msg.bad { background: var(--bad-soft); color: #8E2B1D; border: 2px solid var(--bad); }
-.msg.info { background: var(--sun-soft); color: #7A4C00; border: 2px solid var(--sun); }
-.field { display: grid; gap: 6px; min-width: 0; }
-.field label, .field .lab { font-weight: 600; font-size: 14px; }
-.field input, .field select, .field textarea { font: inherit; font-size: 16px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); width: 100%; }
-.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.btn.link { border: 0; background: none; color: var(--muted); padding: 8px 4px; font-weight: 400; text-decoration: underline; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.msg { border-radius: 14px; padding: 10px 14px; font-weight: 600; }
+.msg.good { background: var(--good-soft); color: var(--good); }
+.msg.bad { background: var(--bad-soft); color: var(--bad); }
+.msg.info { background: var(--info-soft); color: #8A5200; }
+.tip { margin: 10px 0 0; background: var(--tc-soft); border-radius: 12px; padding: 10px 14px; }
 
 /* login */
-.hero { position: relative; overflow: hidden; border-radius: 26px; background: var(--night); color: #FFFFFF; padding: 32px 32px 150px; }
-.hero svg.net { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; }
-.hero > *:not(svg) { position: relative; }
-.hero h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(42px, 8vw, 78px); line-height: .95; margin: 6px 0 10px; }
-.hero h1 span { color: var(--sun); }
-.eyebrow { font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: #9FB0D3; }
-.hero p { color: #D4DCEE; font-size: 18px; max-width: 50ch; margin: 0; }
-.login { position: relative; z-index: 2; margin-top: -110px; margin-inline: auto; width: min(580px, 100%); background: var(--paper); border-radius: 22px; padding: 24px; box-shadow: 0 12px 30px rgba(20,33,61,.22); display: grid; gap: 14px; }
-.login h2 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 26px; }
-.map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.map div { border-radius: 14px; padding: 10px 12px; font-size: 14px; }
-.map b { display: block; font-family: var(--font-display); font-size: 16px; }
-@media (max-width: 560px) { .map, .pair { grid-template-columns: minmax(0, 1fr); } .hero { padding: 24px 20px 130px; } }
+.hero { position: relative; overflow: hidden; border-radius: 26px; background: linear-gradient(160deg, var(--night), var(--dusk)); color: #FFFFFF; padding: 36px 32px 140px; }
+.hero > *:not(svg) { position: relative; z-index: 1; }
+.hero h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(46px, 9vw, 82px); line-height: .95; margin: 0; }
+.hero p { color: #C9D3EA; font-size: 19px; margin: 10px 0 0; }
+.net { position: absolute; inset: 0; width: 100%; height: 100%; }
+.login { position: relative; z-index: 2; margin: -100px auto 0; width: min(520px, 100%); background: var(--paper); border-radius: 22px; padding: 24px; box-shadow: 0 12px 30px rgba(20,33,61,.22); display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-weight: 600; font-size: 15px; }
+.field input, .field select { font: inherit; font-size: 18px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); width: 100%; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.status { font-size: 14px; color: var(--muted); margin: 0; }
+.status.ok { color: var(--good); font-weight: 600; } .status.err { color: var(--bad); font-weight: 600; }
 
-/* warm-up blanks */
-.sentence { font-family: var(--font-display); font-weight: 700; font-size: clamp(24px, 4vw, 38px); line-height: 1.6; margin: 6px 0 18px; }
-.blank { font: inherit; color: var(--muted); background: var(--t1-soft); border: 3px dashed var(--t1); border-radius: 14px; padding: 0 16px; min-width: 5.6em; cursor: pointer; }
+/* starter */
+.sentence { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 4.4vw, 42px); line-height: 1.6; margin: 0 0 20px; }
+.blank { font: inherit; color: var(--muted); background: var(--t1-soft); border: 3px dashed var(--t1); border-radius: 14px; padding: 0 16px; min-width: 5.5em; cursor: pointer; }
 .blank.filled { color: var(--ink); border-style: solid; background: var(--paper); }
-.blank.right { border-color: var(--good); background: var(--good-soft); color: #145C3D; cursor: default; }
-.bank { display: flex; flex-wrap: wrap; gap: 10px; }
-.chip { font-weight: 600; font-size: 18px; padding: 10px 18px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--ink); }
-.chip:hover:not(:disabled) { background: var(--sun-soft); }
+.blank.right { border-color: var(--good); background: var(--good-soft); color: var(--good); cursor: default; }
+.bank { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.chip { font-weight: 600; font-size: 19px; padding: 10px 20px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--ink); }
 .chip:disabled { opacity: .3; cursor: default; box-shadow: none; }
+.flash-bad { animation: fb .45s; }
+@keyframes fb { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-/* how-it-works animation */
 .pipe { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-@media (max-width: 860px) { .pipe { grid-template-columns: minmax(0, 1fr); } }
-.pstep { border: 2px solid var(--line); border-radius: 18px; padding: 14px; background: var(--paper); opacity: .4; transition: opacity .4s, border-color .4s, box-shadow .4s; min-width: 0; }
-.pstep.on { opacity: 1; border-color: var(--c); box-shadow: 0 0 0 4px var(--cs); }
-.pstep h4 { margin: 0 0 8px; font-family: var(--font-display); font-size: 19px; display: flex; gap: 8px; align-items: center; }
-.pstep h4 span { width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #FFFFFF; display: grid; place-items: center; font-size: 15px; }
-.buckets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.bucket { border: 2px dashed var(--line); border-radius: 12px; padding: 6px; min-height: 110px; text-align: center; }
-.bucket b { display: block; font-size: 13px; }
-.bucket .items { font-size: 24px; line-height: 1.2; min-height: 60px; }
-.bucket .items span { display: inline-block; transition: transform .4s, opacity .4s; }
-.bucket .n { font-family: var(--font-code); font-size: 12px; color: var(--muted); }
-svg.brain { width: 100%; height: 130px; display: block; }
-svg.brain line { stroke: var(--line); stroke-width: 2; transition: stroke .3s; }
-svg.brain line.hot { stroke: var(--t3); }
-svg.brain circle { fill: var(--paper); stroke: var(--t3); stroke-width: 3; transition: fill .3s; }
-svg.brain circle.hot { fill: var(--t3); }
-.prog { height: 12px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 8px; }
-.prog i { display: block; height: 100%; width: 0; background: var(--t3); transition: width .25s linear; }
-.cam { border: 3px solid var(--ink); border-radius: 14px; height: 74px; display: grid; place-items: center; font-size: 40px; position: relative; background: #FBFBFE; }
-.cam::before { content: "● LIVE"; position: absolute; top: 4px; left: 8px; font-size: 10px; color: var(--bad); font-weight: 600; font-family: var(--font-code); }
-.bars { display: grid; gap: 6px; margin-top: 10px; }
-.bars div { display: grid; grid-template-columns: 62px minmax(0, 1fr) 42px; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; }
-.bars .track { height: 14px; background: var(--line); border-radius: 99px; overflow: hidden; }
-.bars .track i { display: block; height: 100%; width: 0; border-radius: 99px; transition: width .9s ease-out; }
-.bars em { font-style: normal; font-family: var(--font-code); font-size: 12px; text-align: right; }
-.say { font-size: 17px; font-weight: 600; min-height: 3em; margin: 14px 0 0; }
-.words { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.words span { border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; opacity: .45; transition: all .3s; }
-.words span.lit { opacity: 1; border-color: var(--t4); background: var(--t4-soft); }
-.words span b { color: var(--t4); }
+@media (max-width: 760px) { .pipe { grid-template-columns: minmax(0, 1fr); } }
+.ps { border: 2px solid var(--line); border-radius: 18px; padding: 16px; background: var(--paper); opacity: .4; transition: opacity .4s, border-color .4s, background .4s; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ps.on { opacity: 1; border-color: var(--c); background: var(--cs); }
+.ps.done { opacity: 1; }
+.ps h3 { margin: 0; font-family: var(--font-display); font-size: 21px; display: flex; gap: 8px; align-items: center; }
+.ps h3 span { width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #FFFFFF; display: grid; place-items: center; font-size: 15px; }
+.piles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; text-align: center; font-size: 13px; font-weight: 600; }
+.piles div { min-height: 76px; border-radius: 10px; background: var(--paper); padding: 4px; }
+.piles i { font-style: normal; font-size: 18px; display: inline-block; }
+.prog { height: 14px; border-radius: 99px; background: var(--paper); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 0; background: var(--t3); transition: width .15s; }
+.cam { font-size: 54px; text-align: center; line-height: 1; }
+.bars { display: grid; gap: 6px; font-size: 14px; }
+.bars div { display: grid; grid-template-columns: 56px minmax(0, 1fr) 40px; gap: 6px; align-items: center; }
+.bars .tr { height: 12px; background: var(--paper); border-radius: 99px; overflow: hidden; }
+.bars .tr i { display: block; height: 100%; width: 0; transition: width .8s; }
+.caption { font-family: var(--font-display); font-weight: 600; font-size: clamp(20px, 3vw, 26px); margin: 0; min-height: 1.4em; }
 
-/* problem match */
-.problem { display: flex; gap: 16px; align-items: center; background: var(--night); color: #FFFFFF; border-radius: 18px; padding: 16px 18px; }
-.problem .ic { flex: none; width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: 34px; }
-.problem .q { font-family: var(--font-display); font-weight: 600; font-size: clamp(18px, 2.4vw, 23px); line-height: 1.25; }
-.problem .n { font-family: var(--font-code); font-size: 12px; color: #9FB0D3; }
-.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
-@media (max-width: 560px) { .opts { grid-template-columns: minmax(0, 1fr); } }
-.opt { text-align: left; display: flex; gap: 12px; align-items: center; border: 2px solid var(--line); background: var(--paper); border-radius: 16px; padding: 14px; cursor: pointer; color: var(--ink); }
-.opt:hover:not(:disabled) { border-color: var(--t3); background: var(--t3-soft); }
-.opt .e { font-size: 30px; flex: none; }
-.opt b { display: block; font-family: var(--font-display); font-size: 18px; }
-.opt small { color: var(--muted); }
+.problem { display: flex; gap: 14px; align-items: center; font-family: var(--font-display); font-weight: 600; font-size: clamp(20px, 3vw, 26px); line-height: 1.3; margin-bottom: 16px; }
+.problem .e { font-size: 46px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .opts { grid-template-columns: minmax(0, 1fr); } }
+.opt { display: flex; gap: 12px; align-items: center; text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 16px; padding: 14px; cursor: pointer; font-size: 18px; font-weight: 600; color: var(--ink); }
+.opt .e { font-size: 30px; }
+.opt:hover:not(:disabled) { border-color: var(--tc); background: var(--tc-soft); }
 .opt.right { border-color: var(--good); background: var(--good-soft); }
 .opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
 .opt:disabled { cursor: default; }
 
-/* main levels */
-.levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.levels div { border-radius: 14px; border: 2px solid var(--line); background: var(--paper); padding: 8px 10px; display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; min-width: 0; }
-.levels .dot { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #FFFFFF; font-family: var(--font-display); background: var(--line); }
-.levels div.cur { border-color: var(--c); box-shadow: 0 0 0 3px var(--cs); }
-.levels div.cur .dot, .levels div.ok .dot { background: var(--c); }
-.levels div.ok { background: var(--cs); border-color: var(--c); }
-.levels div.lock { opacity: .5; }
-@media (max-width: 640px) { .levels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
-.steps li::marker { font-family: var(--font-display); font-weight: 700; color: var(--tc); }
-.tm-link { display: inline-flex; align-items: center; gap: 8px; background: var(--sun); color: var(--night); text-decoration: none; padding: 10px 16px; border-radius: 12px; font-weight: 600; margin-top: 12px; }
-.picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* main */
+.lv { display: flex; gap: 6px; }
+.lv span { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; background: var(--paper); border: 2px solid var(--line); color: var(--muted); }
+.lv span.done { background: var(--good); border-color: var(--good); color: #FFFFFF; }
+.lv span.on { background: var(--tc); border-color: var(--tc); color: #FFFFFF; }
+.picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 @media (max-width: 640px) { .picks { grid-template-columns: minmax(0, 1fr); } }
-.pick { text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 16px; padding: 12px; cursor: pointer; color: var(--ink); display: grid; gap: 2px; }
-.pick .e { font-size: 28px; }
-.pick b { font-family: var(--font-display); font-size: 17px; }
-.pick small { color: var(--muted); font-size: 13px; }
+.pick { border: 2px solid var(--line); background: var(--paper); border-radius: 16px; padding: 14px; cursor: pointer; text-align: left; display: grid; gap: 2px; color: var(--ink); }
+.pick .e { font-size: 32px; }
+.pick b { font-family: var(--font-display); font-size: 19px; }
+.pick small { color: var(--muted); font-size: 14px; }
 .pick.sel { border-color: var(--tc); background: var(--tc-soft); box-shadow: 0 0 0 3px var(--tc-soft); }
 .pick:disabled { cursor: default; }
-.classrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.testgrid { display: grid; gap: 8px; }
-.testgrid .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border: 2px solid var(--line); border-radius: 12px; }
-.dots5 { display: flex; gap: 6px; }
-.dots5 button { width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--paper); cursor: pointer; font-weight: 600; color: var(--ink); }
-.dots5 button.sel { background: var(--tc); border-color: var(--tc); color: #FFFFFF; }
-.meter { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
-.meter .ring { flex: none; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 20px; background: conic-gradient(var(--tc) calc(var(--p) * 1%), var(--line) 0); position: relative; }
-.meter .ring::before { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: var(--paper); }
-.meter .ring span { position: relative; }
-.checklist { display: grid; gap: 8px; }
-.checklist label { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); }
-.checklist input { appearance: none; -webkit-appearance: none; flex: none; width: 26px; height: 26px; border-radius: 8px; border: 2.5px solid var(--tc); background: var(--paper); display: grid; place-items: center; margin: 0; cursor: pointer; }
-.checklist input::after { content: ""; width: 7px; height: 13px; border: solid #FFFFFF; border-width: 0 3px 3px 0; transform: rotate(45deg) scale(0); margin-top: -3px; transition: transform .15s; }
-.checklist input:checked { background: var(--tc); }
-.checklist input:checked::after { transform: rotate(45deg) scale(1); }
-.checklist label:has(input:checked) { background: var(--tc-soft); border-color: var(--tc); }
+.score5 { display: grid; gap: 10px; margin-top: 14px; }
+.score5 .r { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr); gap: 10px; align-items: center; }
+.score5 .r b { font-family: var(--font-display); font-size: 18px; overflow-wrap: anywhere; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dots button { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper); font-weight: 600; cursor: pointer; color: var(--ink); }
+.dots button.sel { background: var(--tc); border-color: var(--tc); color: #FFFFFF; }
+.dots button:disabled { cursor: default; }
+.acc { font-family: var(--font-display); font-weight: 700; font-size: 22px; margin-top: 14px; }
 
-/* Teachable Machine guide mock */
-.tm { background: var(--night); border-radius: 22px; padding: 12px; color: #FFFFFF; }
-.tm .label { padding: 4px 6px 10px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
-.tm .label .pill { font-family: var(--font-code); font-size: 12px; background: var(--sun); color: var(--night); padding: 2px 8px; border-radius: 6px; }
-.tm-screen { background: #EEF1F6; border-radius: 14px; padding: 12px; color: #202124; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
-@media (max-width: 520px) { .tm-screen { grid-template-columns: minmax(0, 1fr); } }
-.tm-col { display: grid; gap: 8px; min-width: 0; }
-.tm-card { background: #FFFFFF; border-radius: 10px; padding: 8px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.12); position: relative; }
-.tm-card b { display: flex; justify-content: space-between; font-size: 13px; }
-.tm-card b i { font-style: normal; color: #80868B; font-weight: 400; }
-.tm-btns { display: flex; gap: 6px; margin-top: 6px; }
-.tm-btns span { border: 1px solid #DADCE0; border-radius: 6px; padding: 2px 6px; font-size: 11px; color: #1967D2; }
-.tm-thumbs { display: flex; gap: 3px; margin-top: 6px; min-height: 16px; }
-.tm-thumbs i { width: 16px; height: 16px; border-radius: 3px; background: #C9D3E6; }
-.tm-add { border: 2px dashed #BDC1C6; border-radius: 10px; padding: 6px; text-align: center; color: #5F6368; font-size: 12px; }
-.tm-train { background: #FFFFFF; border-radius: 10px; padding: 10px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,.12); position: relative; }
-.tm-train span { display: block; background: #1A73E8; color: #FFFFFF; border-radius: 6px; padding: 6px; font-weight: 600; margin-top: 6px; }
-.tm-prev { background: #FFFFFF; border-radius: 10px; padding: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.12); position: relative; }
-.tm-prev .vid { height: 54px; border-radius: 6px; background: #3C4043; color: #FFFFFF; display: grid; place-items: center; font-size: 26px; margin: 6px 0; }
-.tm-prev .ob { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px; align-items: center; font-size: 11px; margin-top: 3px; }
-.tm-prev .ob i { height: 10px; border-radius: 4px; display: block; }
-.hl { outline: 3px solid var(--sun); outline-offset: 3px; }
-@media (prefers-reduced-motion: no-preference) { .hl { animation: hl 1.4s ease-in-out infinite; } @keyframes hl { 50% { outline-color: rgba(252,163,17,.25); } } }
-.tm .tip { color: #D4DCEE; font-size: 14px; padding: 10px 6px 2px; }
-.tm .tip b { color: var(--sun); }
-
-/* plenary + results */
-.qprog { display: flex; gap: 6px; }
-.qprog i { flex: 1; height: 8px; border-radius: 99px; background: var(--line); }
-.qprog i.ok { background: var(--good); } .qprog i.no { background: var(--bad); } .qprog i.cur { background: var(--sun); }
-.mcq { display: grid; gap: 8px; }
-.mcq button { text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-size: 16px; color: var(--ink); display: flex; gap: 12px; align-items: center; }
+/* plenary */
+.mcq { display: grid; gap: 10px; margin-top: 16px; }
+.mcq button { text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 14px; padding: 14px 16px; cursor: pointer; font-size: 18px; color: var(--ink); display: flex; gap: 12px; align-items: center; }
 .mcq button:hover:not(:disabled) { border-color: var(--tc); background: var(--tc-soft); }
-.mcq button .k { flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--tc-soft); display: grid; place-items: center; font-weight: 700; font-family: var(--font-display); }
+.mcq .k { flex: none; width: 32px; height: 32px; border-radius: 9px; background: var(--tc-soft); display: grid; place-items: center; font-weight: 700; font-family: var(--font-display); }
 .mcq button.right { border-color: var(--good); background: var(--good-soft); }
 .mcq button.wrong { border-color: var(--bad); background: var(--bad-soft); }
 .mcq button:disabled { cursor: default; }
-.result { background: var(--night); color: #FFFFFF; border-radius: 26px; padding: 28px 26px; display: grid; gap: 14px; position: relative; overflow: hidden; }
-.result .ring { width: 104px; height: 104px; border-radius: 50%; background: var(--sun); display: grid; place-items: center; box-shadow: 0 0 0 9px rgba(252,163,17,.25); color: var(--night); font-family: var(--font-display); font-weight: 700; font-size: 34px; }
-.result h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 5vw, 46px); margin: 0; line-height: 1.05; }
-.result p { margin: 0; color: #D4DCEE; }
-.breakdown { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.breakdown div { background: rgba(255,255,255,.1); border-radius: 14px; padding: 10px 14px; }
-.breakdown small { display: block; color: #9FB0D3; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
-.breakdown b { font-family: var(--font-display); font-size: 28px; font-variant-numeric: tabular-nums; }
-.breakdown span { color: #9FB0D3; }
-@media (max-width: 520px) { .breakdown { grid-template-columns: minmax(0, 1fr); } }
-.sync { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.12); }
-.sync i { width: 10px; height: 10px; border-radius: 50%; background: var(--sun); display: block; }
-.sync.ok i { background: #62C554; } .sync.off i { background: #9FB0D3; }
-table.board { width: 100%; border-collapse: collapse; font-size: 15px; }
-table.board th, table.board td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-table.board th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-table.board td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-table.board tr.me td { background: var(--sun-soft); }
-.levels-key { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.levels-key div { border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 14px; }
-.levels-key div.me { border-color: var(--sun); background: var(--sun-soft); }
-.levels-key b { display: block; }
-@media (max-width: 640px) { .levels-key { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.confirm { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--bad-soft); border: 2px solid var(--bad); border-radius: 16px; padding: 12px 16px; }
-.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #FFFFFF; padding: 12px 20px; border-radius: 999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 40; }
+
+/* results */
+.result { background: linear-gradient(160deg, var(--night), var(--dusk)); color: #FFFFFF; border-radius: 26px; padding: 30px 26px; display: grid; gap: 14px; justify-items: start; }
+.ring { width: 110px; height: 110px; border-radius: 50%; background: var(--sun); display: grid; place-items: center; color: var(--night); font-family: var(--font-display); font-weight: 700; font-size: 36px; box-shadow: 0 0 0 9px rgba(252,163,17,.25); }
+.result h2 { font-size: clamp(28px, 5vw, 44px); }
+.split { display: flex; flex-wrap: wrap; gap: 10px; }
+.split span { background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px 14px; font-weight: 600; }
+.sync { font-size: 14px; color: #C9D3EA; }
+table.board { width: 100%; border-collapse: collapse; }
+table.board td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+table.board td.num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+table.board tr.me td { background: var(--info-soft); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #FFFFFF; padding: 12px 22px; border-radius: 999px; font-weight: 600; z-index: 40; }
 .toast b { color: var(--sun); }
 canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
-.foot { font-size: 13px; color: var(--muted); text-align: center; }
-.flash-bad { animation: fb .5s; }
-@keyframes fb { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 @media (prefers-reduced-motion: no-preference) {
-  .pop { animation: pop .4s cubic-bezier(.2,.9,.3,1.3); }
-  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: .6; } to { transform: none; opacity: 1; } }
+  .pop { animation: pop .35s cubic-bezier(.2,.9,.3,1.3); }
+  @keyframes pop { from { transform: translateY(8px); opacity: .5; } }
   .fly { animation: fly 1s ease-out forwards; }
-  @keyframes fly { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-34px); opacity: 0; } }
-  .btn.primary.ready { animation: nudge 1.6s ease-in-out infinite; }
-  @keyframes nudge { 0%, 100% { box-shadow: 0 4px 0 rgba(18,26,46,.25), 0 0 0 0 var(--tc-soft); } 50% { box-shadow: 0 4px 0 rgba(18,26,46,.25), 0 0 0 8px var(--tc-soft); } }
+  @keyframes fly { to { transform: translateY(-34px); opacity: 0; } }
+  .piles i { animation: drop .35s ease-out; }
+  @keyframes drop { from { transform: translateY(-14px); opacity: 0; } }
 }
 @media (prefers-reduced-motion: reduce) { .fly { display: none; } }
 </style>
 </head>
 <body>
-
 <div class="bar" id="bar" hidden>
   <div class="bar-in">
-    <div class="logo"><i>AI</i>AI Quest</div>
+    <div class="logo">AI Quest</div>
     <div class="who" id="who"></div>
-    <div class="stages" id="stages"></div>
-    <div class="points" id="points"><span class="coin">★</span><b id="pts">0</b><small>/ 200</small></div>
+    <div class="steps" id="steps" aria-label="Progress"></div>
+    <div class="points" id="points"><span class="coin">★</span><b id="pts">0</b></div>
   </div>
 </div>
-
 <main class="wrap" id="app"></main>
 <div class="toast" id="toast" hidden></div>
 <canvas id="confetti" hidden></canvas>
@@ -305,147 +208,120 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
   if (typeof DIVISIONS === "undefined") window.DIVISIONS = "ABCDEFGHIJKLMNOPQ".split("");
   if (typeof SHEET_URL === "undefined") window.SHEET_URL = "";
 
-  /* ================= content ================= */
+  /* ---------- content ---------- */
   var QUEST = "AI Quest";
-  var LEVELS = [{ min: 0, name: "AI Explorer" }, { min: 80, name: "AI Trainer" }, { min: 140, name: "AI Engineer" }, { min: 180, name: "AI Innovator" }];
-  var TC = [["--t1", "--t1-soft"], ["--t2", "--t2-soft"], ["--t3", "--t3-soft"], ["--t4", "--t4-soft"]];
+  var TM_URL = "https://teachablemachine.withgoogle.com/train/image";
   var BANK = ["data", "magic", "predictions", "electricity", "colours", "mistakes"];
-
   var SYSTEMS = [
-    { id: "img", e: "📷", name: "Image classification", d: "Sorts pictures into groups" },
-    { id: "speech", e: "🎙️", name: "Speech recognition", d: "Understands spoken words" },
-    { id: "chat", e: "💬", name: "Chatbot", d: "Answers typed questions" },
-    { id: "rec", e: "🛍️", name: "Recommendation system", d: "Suggests things you may like" }
+    { id: "img", e: "📷", name: "Image classification" },
+    { id: "speech", e: "🎙️", name: "Speech recognition" },
+    { id: "chat", e: "💬", name: "Chatbot" },
+    { id: "rec", e: "🛍️", name: "Recommendation system" }
   ];
-  var MATCH = [
-    { e: "🌴", q: "A farm in Al Ain wants to spot sick date palm leaves from photos.", a: "img", why: "Photos of healthy and sick leaves are sorted into groups – that is image classification." }
-  ];
-
+  var MATCH = { e: "🌴", q: "A farm in Al Ain wants to spot sick date palm leaves from photos.", a: "img" };
   var PROJECTS = [
-    { id: "recycle", e: "♻️", name: "Smart Recycling Bin", problem: "Dubai Municipality wants bins that sort waste automatically.", classes: ["Plastic", "Paper", "Metal"], objects: "a plastic bottle, a sheet of paper and a metal can or tin" },
-    { id: "gesture", e: "✋", name: "Touchless Lift", problem: "A hospital in Sharjah wants lifts that work without touching buttons, to stop germs spreading.", classes: ["Thumbs up", "Open hand", "Fist"], objects: "your hand making each gesture" },
-    { id: "own", e: "💡", name: "My own idea", problem: "Choose a real problem at school or at home that sorting pictures could solve.", classes: ["", "", ""], objects: "the objects for your own classes" }
+    { id: "recycle", e: "♻️", name: "Smart Recycling Bin", d: "Sort plastic, paper and metal", classes: ["Plastic", "Paper", "Metal"] },
+    { id: "gesture", e: "✋", name: "Touchless Lift", d: "Read hand gestures", classes: ["Thumbs up", "Open hand", "Fist"] },
+    { id: "own", e: "💡", name: "My own idea", d: "Choose your own 3 classes", classes: ["", "", ""] }
   ];
-  var MISSIONS = [
-    { id: "bronze", e: "🥉", name: "Bronze", d: "2 classes · 20 images each", n: 2, min: 20 },
-    { id: "silver", e: "🥈", name: "Silver", d: "3 classes · 30 images each", n: 3, min: 30 },
-    { id: "gold", e: "🥇", name: "Gold", d: "3 classes + a “Nothing” class · 30 images each · test an unseen object", n: 3, min: 30 }
-  ];
-  var IMPROVE = ["Added more images to a weak class", "Recorded from different angles and distances", "Changed the lighting or background", "Deleted wrong or blurry images", "No change needed – all classes scored 4 or 5"];
-
+  var MIN_IMG = 20;
   var MAIN = [
-    { name: "Set up", title: "Choose your problem and set up the project",
-      checks: ["I opened Teachable Machine and chose <b>Image Project → Standard image model</b>.", "I renamed the classes to match my class names below.", "I have the right number of classes for my mission."],
-      tip: "Click the pencil next to “Class 1” to rename it. Use “Add a class” for a third class." },
-    { name: "Collect data", title: "Collect training data",
-      checks: ["I recorded images for <b>every</b> class (webcam or upload).", "I moved the object to different angles and distances while recording.", "I typed the number of images for each class below."],
-      tip: "Press and hold “Hold to Record”. Teachable Machine shows the number of image samples under each class." },
-    { name: "Train", title: "Train your model",
-      checks: ["I clicked <b>Train Model</b> and waited until it said “Model Trained”.", "I did not switch tabs while it was training.", "The Preview panel shows a bar for each of my classes."],
-      tip: "Training takes about 20–60 seconds. Keep this tab and the Teachable Machine tab open." },
-    { name: "Test & improve", title: "Test, record and improve",
-      checks: ["I showed each class to the camera 5 times and counted the correct predictions.", "I recorded my results above.", "I improved any class that scored below 4 (more images, then train again), or all my classes scored 4 or 5."],
-      tip: "Look at the Output bars in Preview. A correct prediction means the right class has the longest bar." }
+    { title: "Set up your project", line: "Choose a project. Then open Teachable Machine → <b>Image Project</b> → <b>Standard image model</b> and rename the classes.",
+      tip: "Click the pencil ✎ next to “Class 1” to rename it. Click “Add a class” for the third class." },
+    { title: "Collect images", line: "Record at least <b>20 images</b> for each class, then type how many you have.",
+      tip: "Press and hold “Hold to Record”. Turn the object and move it closer and further away while recording." },
+    { title: "Train your model", line: "Click <b>Train Model</b> and wait until it says <b>Model Trained</b>.",
+      tip: "It takes 20–60 seconds. Stay on the Teachable Machine tab while it trains." },
+    { title: "Bonus: test your model", line: "Show each class to the camera <b>5 times</b>. Tap how many times it was right.",
+      tip: "It is right when the correct class has the longest Output bar in Preview." }
   ];
-
   var QUIZ = [
-    { q: "Your model keeps mistaking Paper for Plastic. What is the BEST way to improve it?", opts: ["Rename the classes", "Add more varied images of Paper and Plastic, then train again", "Test it fewer times", "Turn the webcam off and on"], a: 1 },
-    { q: "Which of these is image classification solving a real-world problem?", opts: ["A chatbot that answers Dubai Metro questions", "A speaker that plays music when you ask", "A smart bin camera that sorts plastic, paper and metal", "A calculator that adds up a shopping bill"], a: 2 }
+    { q: "Your model mixes up Paper and Plastic. What is the BEST fix?", opts: ["Rename the classes", "Add more varied images, then train again", "Test it fewer times", "Turn the webcam off and on"], a: 1 },
+    { q: "Which one is image classification?", opts: ["A chatbot answering Metro questions", "A speaker playing music when asked", "A smart bin camera sorting waste", "A calculator adding a bill"], a: 2 }
   ];
-  var QPTS = 20;
+  var TC = [["--t1", "--t1-soft"], ["--t2", "--t2-soft"], ["--t3", "--t3-soft"], ["--t4", "--t4-soft"]];
+  // points: starter 40 (blanks 20 + match 20), main 4 × 30 = 120 (level 4 is a bonus), plenary 2 × 20 = 40 → 200
+  var LV_NAMES = [[0, "AI Explorer"], [80, "AI Trainer"], [140, "AI Engineer"], [180, "AI Innovator"]];
 
-  /* ================= state ================= */
-  var KEY = "aiQuest_v2";
+  /* ---------- state ---------- */
+  var KEY = "aiQuest_v3";
   function fresh() {
     return { sid: "", name: "", cls: "", division: "", stage: "login", started: "",
-      starter: { phase: "blank", picks: ["", ""], bLog: [], bTries: 0, bDone: false, idx: 0, tries: 0, mLog: [], score: 0 },
-      main: { level: 0, ticks: {}, done: [false, false, false, false], score: [0, 0, 0, 0], project: "", mission: "", names: ["", "", ""], counts: {}, tests: {}, improve: "", unseen: "" },
-      plenary: { idx: 0, score: 0, marks: [], chosen: [] }, sync: "none" };
+      st: { phase: "blank", picks: ["", ""], bTries: 0, bDone: false, blank: 0, bLog: [], mTries: 0, mDone: false, match: 0, mLog: [] },
+      mn: { lv: 0, score: [0, 0, 0, 0], project: "", names: ["", "", ""], counts: {}, tests: {} },
+      pl: { idx: 0, marks: [], chosen: [], score: 0 }, sync: "none" };
   }
   var S = fresh();
-  try { var saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved && saved.sid) S = Object.assign(fresh(), saved); } catch (e) {}
+  try { var sv = JSON.parse(localStorage.getItem(KEY) || "null"); if (sv && sv.sid) S = Object.assign(fresh(), sv); } catch (e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
   var app = $("app");
-  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
   var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
-  function scores() { var st = S.starter.score, mn = sum(S.main.score), pl = S.plenary.score; return { starter: st, main: mn, plenary: pl, total: st + mn + pl }; }
-  function levelFor(t) { var l = LEVELS[0]; LEVELS.forEach(function (x) { if (t >= x.min) l = x; }); return l; }
+  function tot() { var st = S.st.blank + S.st.match, mn = sum(S.mn.score), pl = S.pl.score; return { st: st, mn: mn, pl: pl, all: st + mn + pl }; }
+  function levelName(t) { var n = LV_NAMES[0][1]; LV_NAMES.forEach(function (x) { if (t >= x[0]) n = x[1]; }); return n; }
   function theme(i) { var c = TC[i % 4]; document.documentElement.style.setProperty("--tc", "var(" + c[0] + ")"); document.documentElement.style.setProperty("--tc-soft", "var(" + c[1] + ")"); }
-  function mission() { var m = S.main; for (var i = 0; i < MISSIONS.length; i++) if (MISSIONS[i].id === m.mission) return MISSIONS[i]; return null; }
-  function project() { var m = S.main; for (var i = 0; i < PROJECTS.length; i++) if (PROJECTS[i].id === m.project) return PROJECTS[i]; return null; }
-  function classList() {
-    var mi = mission(); if (!mi) return [];
-    var list = S.main.names.slice(0, mi.n).map(function (n, i) { return (n || "").trim() || "Class " + (i + 1); });
-    if (mi.id === "gold") list.push("Nothing");
-    return list;
-  }
-  function accuracy() {
-    var cl = classList(), t = S.main.tests, got = 0, all = 0;
-    cl.forEach(function (c) { if (t[c] != null) { got += t[c]; all += 5; } });
-    return all ? Math.round(got / all * 100) : null;
-  }
+  function project() { for (var i = 0; i < PROJECTS.length; i++) if (PROJECTS[i].id === S.mn.project) return PROJECTS[i]; return null; }
+  function classList() { return S.mn.names.map(function (n, i) { return (n || "").trim() || "Class " + (i + 1); }); }
+  function accuracy() { var cl = classList(), t = S.mn.tests, got = 0, all = 0; cl.forEach(function (c) { if (t[c] != null) { got += t[c]; all += 5; } }); return all ? Math.round(got / all * 100) : null; }
 
-  /* ================= spreadsheet ================= */
+  /* ---------- spreadsheet (same format as before, so the existing script keeps working) ---------- */
   var SHEET = (typeof SHEET_URL === "string" && /^https:\/\/script\.google(usercontent)?\.com\//.test(SHEET_URL.trim())) ? SHEET_URL.trim() : "";
   var STAGES = { login: "Logged in", starter: "Starter", main: "Main activity", plenary: "Plenary", done: "Finished" };
   function payload() {
-    var sc = scores(), m = S.main, p = project(), mi = mission(), cl = classList();
-    return { sheet: QUEST, sid: S.sid, name: S.name, cls: S.cls, division: S.division, started: S.started, total: sc.total,
+    var t = tot(), m = S.mn, p = project(), cl = p ? classList() : [];
+    return { sheet: QUEST, sid: S.sid, name: S.name, cls: S.cls, division: S.division, started: S.started, total: t.all,
       fields: [
         ["Stage reached", STAGES[S.stage] || S.stage],
-        ["Starter (/40)", sc.starter], ["Main (/120)", sc.main], ["Plenary (/40)", sc.plenary], ["Total (/200)", sc.total], ["Level", levelFor(sc.total).name],
-        ["Main levels done", m.done.filter(Boolean).length + " / 4"],
-        ["Warm-up answer (AI learns from __ to make __)", (S.starter.bLog || []).join("  →  ")],
-        ["AI Match answer (Al Ain date palms)", (S.starter.mLog || []).join(" | ")],
-        ["Project", p ? p.name : ""], ["Mission", mi ? mi.name : ""],
+        ["Starter (/40)", t.st], ["Main (/120)", t.mn], ["Plenary (/40)", t.pl], ["Total (/200)", t.all], ["Level", levelName(t.all)],
+        ["Main levels done", m.score.filter(Boolean).length + " / 4"],
+        ["Warm-up answer (AI learns from __ to make __)", (S.st.bLog || []).join("  →  ")],
+        ["AI Match answer (Al Ain date palms)", (S.st.mLog || []).join(" | ")],
+        ["Project", p ? p.name : ""], ["Mission", m.score[3] ? "Bonus test done" : ""],
         ["Class names", cl.join(", ")],
         ["Images per class", cl.map(function (c) { return c + ": " + (m.counts[c] != null ? m.counts[c] : "–"); }).join(", ")],
         ["Test results (correct / 5)", cl.map(function (c) { return c + ": " + (m.tests[c] != null ? m.tests[c] : "–"); }).join(", ")],
         ["Accuracy %", accuracy() == null ? "" : accuracy()],
-        ["Plenary Q1 answer", S.plenary.chosen[0] || ""], ["Plenary Q2 answer", S.plenary.chosen[1] || ""],
-        ["Plenary result", S.plenary.marks.map(function (x) { return x ? "✓" : "✗"; }).join(" ")]
+        ["Plenary Q1 answer", S.pl.chosen[0] || ""], ["Plenary Q2 answer", S.pl.chosen[1] || ""],
+        ["Plenary result", S.pl.marks.map(function (x) { return x ? "✓" : "✗"; }).join(" ")]
       ] };
   }
   function sendToSheet() {
-    if (!SHEET) { S.sync = "off"; save(); renderSync(); return; }
-    S.sync = "sending"; renderSync();
+    if (!SHEET) { S.sync = "off"; save(); return; }
+    S.sync = "sending"; showSync();
     try {
       fetch(SHEET, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload()) })
-        .then(function () { S.sync = "ok"; save(); renderSync(); })
-        .catch(function () { S.sync = "fail"; save(); renderSync(); });
-    } catch (e) { S.sync = "fail"; save(); renderSync(); }
+        .then(function () { S.sync = "ok"; save(); showSync(); }, function () { S.sync = "fail"; save(); showSync(); });
+    } catch (e) { S.sync = "fail"; save(); showSync(); }
   }
-  function renderSync() {
-    var el = $("syncState"); if (!el) return;
-    var map = { ok: ["ok", "Saved to the class spreadsheet"], sending: ["", "Saving…"], fail: ["", "Not saved – check the internet, then press Save again"], off: ["off", "Spreadsheet not connected (practice mode)"], none: ["", "Not saved yet"] };
-    var m = map[S.sync] || map.none;
-    el.className = "sync " + m[0]; el.innerHTML = "<i></i>" + m[1];
-    var b = $("retryBtn"); if (b) b.hidden = S.sync !== "fail";
+  function showSync() {
+    var el = $("sync"); if (!el) return;
+    el.textContent = { ok: "✓ Saved to the class spreadsheet", sending: "Saving…", fail: "Not saved – check the internet and press Save again", off: "Practice mode – not saved" }[S.sync] || "";
+    var b = $("retry"); if (b) b.hidden = S.sync !== "fail";
   }
 
-  /* ================= points + bar ================= */
-  function award(n, label) {
-    renderBar(); if (n <= 0) return;
-    var f = document.createElement("span"); f.className = "fly"; f.textContent = "+" + n;
-    $("points").appendChild(f); setTimeout(function () { f.remove(); }, 1000);
-    if (label) toast(label + " <b>+" + n + "</b>");
-  }
+  /* ---------- points + bar ---------- */
   var tt;
-  function toast(h) { var t = $("toast"); t.innerHTML = h; t.hidden = false; clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 1800); }
-  function renderBar() {
-    var on = S.stage !== "login"; $("bar").hidden = !on; if (!on) return;
-    $("who").innerHTML = "<b>" + esc(S.name) + "</b> · Class " + esc(S.cls) + " – " + esc(S.division);
-    var order = ["starter", "main", "plenary", "done"], names = ["Starter", "Main", "Plenary", "Results"], cur = order.indexOf(S.stage);
-    $("stages").innerHTML = names.map(function (n, i) { return '<span class="' + (i < cur ? "done" : i === cur ? "on" : "") + '">' + n + "</span>"; }).join("");
-    $("pts").textContent = scores().total;
+  function toast(h) { var t = $("toast"); t.innerHTML = h; t.hidden = false; clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 1600); }
+  function award(n, label) {
+    bar(); if (n <= 0) return;
+    var f = document.createElement("span"); f.className = "fly"; f.textContent = "+" + n; $("points").appendChild(f);
+    setTimeout(function () { f.remove(); }, 1000);
+    toast((label || "Great!") + " <b>+" + n + "</b>");
   }
-  function go(stage) { S.stage = stage; save(); render(); window.scrollTo(0, 0); }
-  function render() { renderBar(); ({ login: renderLogin, starter: renderStarter, main: renderMain, plenary: renderPlenary, done: renderDone })[S.stage](); }
+  function bar() {
+    var on = S.stage !== "login"; $("bar").hidden = !on; if (!on) return;
+    $("who").textContent = S.name + " · " + S.cls + S.division;
+    var order = ["starter", "main", "plenary", "done"], cur = order.indexOf(S.stage);
+    $("steps").innerHTML = [0, 1, 2].map(function (i) { return '<span class="' + (i < cur ? "done" : i === cur ? "on" : "") + '"></span>'; }).join("");
+    $("pts").textContent = tot().all;
+  }
+  function go(stage) { S.stage = stage; save(); render(); scrollTo(0, 0); sendToSheet(); }
+  function render() { bar(); ({ login: login, starter: starter, main: main, plenary: plenary, done: done })[S.stage](); }
 
-  /* ================= login ================= */
+  /* ---------- login ---------- */
   function netSVG() {
     var pts = [], h = '<svg class="net" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">', seed = 7;
     var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
@@ -454,372 +330,276 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
     pts.forEach(function (a, i) { h += '<circle cx="' + a[0].toFixed(0) + '" cy="' + a[1].toFixed(0) + '" r="' + (i % 5 === 0 ? 5 : 3) + '" fill="' + (i % 7 === 0 ? "#FCA311" : "#9FB0D3") + '"/>'; });
     return h + "</svg>";
   }
-  function renderLogin() {
+  function login() {
     theme(0);
-    var setupMsg = SHEET ? '<span style="color:var(--good);font-weight:600">● Spreadsheet link added – scores will be saved</span>'
-      : (typeof SETUP_OK === "undefined" ? '<span style="color:var(--bad);font-weight:600">● The SHEET_URL line has a typo. Use straight quotes: var SHEET_URL = "https://…";</span>'
-      : (SHEET_URL && String(SHEET_URL).trim() ? '<span style="color:var(--bad);font-weight:600">● The spreadsheet link looks wrong – it should start with https://script.google.com/</span>' : "● Practice mode – scores are not saved to a spreadsheet"));
-    app.innerHTML =
-      '<header class="hero">' + netSVG() + '<div class="eyebrow">Grade VIII · Artificial Intelligence · AI Applications</div>' +
-      '<h1>AI <span>Quest</span></h1><p>Use AI to solve a real-world problem: train your own image classifier in Teachable Machine and win up to <b>200 points</b>.</p></header>' +
-      '<div class="login pop"><h2>Enter the quest</h2>' +
-      '<div class="field"><label for="nm">Your full name</label><input id="nm" autocomplete="off" placeholder="e.g. Aisha Rahman" maxlength="40"></div>' +
-      '<div class="pair"><div class="field"><label for="cl">Class</label><select id="cl"><option value="">Choose…</option>' +
-      CLASSES.map(function (c) { return "<option" + (c === "8" ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + '</select></div>' +
-      '<div class="field"><label for="dv">Division</label><select id="dv"><option value="">Choose…</option>' +
-      DIVISIONS.map(function (d) { return "<option>" + esc(d) + "</option>"; }).join("") + "</select></div></div>" +
-      '<div class="map"><div style="background:var(--t1-soft)"><b>1 · Starter</b>2 questions · 40 pts</div>' +
-      '<div style="background:var(--t2-soft)"><b>2 · Main</b>Teachable Machine · 120 pts</div>' +
-      '<div style="background:var(--t3-soft)"><b>3 · Plenary</b>2 questions · 40 pts</div></div>' +
-      '<div id="loginMsg"></div><button class="btn primary" type="button" id="startBtn">Start the quest →</button>' +
-      '<p class="note" style="margin:0">' + setupMsg + "</p></div>" +
-      '<p class="foot">Sharjah Indian School, Juwaiza · Department of Computer Science</p>';
+    var stat = SHEET ? '<p class="status ok">● Spreadsheet link added</p>'
+      : (typeof SETUP_OK === "undefined" || (typeof SHEET_URL === "string" && SHEET_URL.trim()))
+        ? '<p class="status err">● Spreadsheet link has a mistake – check the SHEET_URL line</p>' : '<p class="status">Practice mode</p>';
+    app.innerHTML = '<header class="hero">' + netSVG() + '<h1>AI Quest</h1><p>Train your own AI. Win up to 200 points.</p></header>' +
+      '<div class="login pop">' +
+      '<div class="field"><label for="nm">Name</label><input id="nm" autocomplete="off" maxlength="40"></div>' +
+      '<div class="pair"><div class="field"><label for="cl">Class</label><select id="cl">' + CLASSES.map(function (c) { return "<option" + (c === "8" ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="field"><label for="dv">Division</label><select id="dv"><option value="">–</option>' + DIVISIONS.map(function (d) { return "<option>" + esc(d) + "</option>"; }).join("") + "</select></div></div>" +
+      '<div id="lmsg"></div><button class="btn primary" id="go" type="button">Start →</button>' + stat + "</div>";
     var start = function () {
-      var n = $("nm").value.trim().replace(/\s+/g, " "), c = $("cl").value, d = $("dv").value, miss = [];
-      if (n.length < 2) miss.push("your name"); if (!c) miss.push("your class"); if (!d) miss.push("your division");
-      if (miss.length) { $("loginMsg").innerHTML = '<div class="msg bad">Please fill in ' + miss.join(", ").replace(/, ([^,]*)$/, " and $1") + " to start.</div>"; return; }
+      var n = $("nm").value.trim().replace(/\s+/g, " "), c = $("cl").value, d = $("dv").value;
+      if (n.length < 2 || !d) { $("lmsg").innerHTML = '<div class="msg bad">Type your name and choose your division.</div>'; return; }
       S.sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       S.name = n; S.cls = c; S.division = d; S.started = new Date().toISOString();
-      go("starter"); sendToSheet();
+      go("starter");
     };
-    $("startBtn").addEventListener("click", start);
-    $("nm").addEventListener("keydown", function (e) { if (e.key === "Enter") start(); });
+    $("go").onclick = start;
+    $("nm").onkeydown = function (e) { if (e.key === "Enter") start(); };
     $("nm").focus();
   }
 
-  /* ================= starter ================= */
-  function head(n, lbl, h, p) { return '<div class="stage-head pop"><span class="big">' + n + '</span><div><div class="lbl">' + lbl + "</div><h2>" + h + "</h2><p>" + p + "</p></div></div>"; }
-  function renderStarter() {
-    theme(0);
-    var ph = S.starter.phase;
-    if (ph === "blank") renderBlank(); else if (ph === "watch") renderWatch(); else renderMatch();
-  }
+  /* ---------- starter ---------- */
+  function starter() { theme(0); ({ blank: blankQ, watch: watch, match: matchQ })[S.st.phase](); }
 
-  function renderBlank() {
-    var st = S.starter;
-    app.innerHTML = head(1, "Starter · Question 1 of 2 · 20 points", "Fill in the blanks", "Tap a word to put it in the next blank. Tap a blank to empty it. Then press Check.") +
-      '<div class="card"><p class="sentence" id="sent">AI learns from <button type="button" class="blank" data-b="0"></button> to make <button type="button" class="blank" data-b="1"></button>.</p>' +
-      '<div class="bank" id="bank">' + BANK.map(function (w) { return '<button type="button" class="chip" data-w="' + w + '">' + w + "</button>"; }).join("") + "</div>" +
-      '<div id="bMsg"></div><div class="actions" id="bAct"><button class="btn primary" id="bCheck" type="button" disabled>Check</button></div></div>';
-    var blanks = document.querySelectorAll(".blank"), chips = document.querySelectorAll("#bank .chip");
+  function blankQ() {
+    var st = S.st;
+    app.innerHTML = '<div class="head"><span class="tag">Starter · 1 / 2</span></div>' +
+      '<div class="card pop"><p class="sentence" id="sent">AI learns from <button type="button" class="blank" data-b="0"></button> to make <button type="button" class="blank" data-b="1"></button>.</p>' +
+      '<div class="bank">' + BANK.map(function (w) { return '<button type="button" class="chip" data-w="' + w + '">' + w + "</button>"; }).join("") + "</div>" +
+      '<div class="row" id="bAct"><button class="btn primary" id="chk" type="button" disabled>Check</button></div><div id="bMsg" style="margin-top:12px"></div></div>';
+    var blanks = app.querySelectorAll(".blank"), chips = app.querySelectorAll(".chip");
     var sync = function () {
-      blanks.forEach(function (bl, k) { bl.textContent = st.picks[k] || "______"; bl.classList.toggle("filled", !!st.picks[k]); });
+      blanks.forEach(function (b, k) { b.textContent = st.picks[k] || "______"; b.classList.toggle("filled", !!st.picks[k]); b.classList.toggle("right", st.bDone); });
       chips.forEach(function (c) { c.disabled = st.bDone || st.picks.indexOf(c.dataset.w) > -1; });
-      $("bCheck").disabled = st.bDone || !st.picks[0] || !st.picks[1];
+      $("chk").disabled = st.bDone || !st.picks[0] || !st.picks[1];
     };
-    chips.forEach(function (c) { c.onclick = function () { var k = st.picks[0] ? (st.picks[1] ? -1 : 1) : 0; if (k < 0) return; st.picks[k] = c.dataset.w; save(); sync(); }; });
-    blanks.forEach(function (bl) { bl.onclick = function () { if (st.bDone) return; st.picks[+bl.dataset.b] = ""; save(); sync(); }; });
-    var done = function () {
-      blanks.forEach(function (bl) { bl.classList.add("right"); });
-      $("bMsg").insertAdjacentHTML("beforeend", '<div class="msg good">AI learns from <b>data</b> (lots of examples) to make <b>predictions</b> about new things it has never seen.</div>');
-      $("bAct").innerHTML = '<button class="btn primary ready" id="next" type="button">See how an AI learns to see →</button>';
-      $("next").onclick = function () { st.phase = "watch"; save(); renderStarter(); window.scrollTo(0, 0); };
+    chips.forEach(function (c) { c.onclick = function () { var k = !st.picks[0] ? 0 : !st.picks[1] ? 1 : -1; if (k > -1) { st.picks[k] = c.dataset.w; save(); sync(); } }; });
+    blanks.forEach(function (b) { b.onclick = function () { if (!st.bDone) { st.picks[+b.dataset.b] = ""; save(); sync(); } }; });
+    var next = function (msg) {
+      $("bMsg").innerHTML = msg;
+      $("bAct").innerHTML = '<button class="btn primary" id="nx" type="button">Next →</button>';
+      $("nx").onclick = function () { st.phase = "watch"; save(); starter(); };
     };
-    $("bCheck").onclick = function () {
+    $("chk").onclick = function () {
       st.bLog = (st.bLog || []).concat(st.picks[0] + " / " + st.picks[1]);
       if (st.picks[0] === "data" && st.picks[1] === "predictions") {
-        var pts = st.bTries === 0 ? 20 : st.bTries === 1 ? 10 : 0;
-        st.score += pts; st.bDone = true; save(); sync(); award(pts, "Great start!"); done(); sendToSheet();
+        st.blank = st.bTries ? 10 : 20; st.bDone = true; save(); sync(); award(st.blank, "Correct!");
+        next('<div class="msg good">Yes! AI learns from examples (data) to guess about new things (predictions).</div>'); sendToSheet();
+      } else if (++st.bTries >= 2) {
+        st.picks = ["data", "predictions"]; st.bDone = true; save(); sync();
+        next('<div class="msg info">Answer: data and predictions.</div>'); sendToSheet();
       } else {
-        st.bTries++;
+        st.picks = ["", ""]; save(); sync();
         var s = $("sent"); s.classList.remove("flash-bad"); void s.offsetWidth; s.classList.add("flash-bad");
-        if (st.bTries >= 2) { st.picks = ["data", "predictions"]; st.bDone = true; save(); sync(); $("bMsg").innerHTML = '<div class="msg info">The answer is data and predictions.</div>'; done(); sendToSheet(); }
-        else { st.picks = ["", ""]; save(); sync(); $("bMsg").innerHTML = '<div class="msg bad">Not quite. What does an AI need to learn from? Try again for 10 points!</div>'; }
+        $("bMsg").innerHTML = '<div class="msg bad">Try again!</div>';
       }
     };
-    sync(); if (st.bDone) { $("bMsg").innerHTML = ""; done(); }
+    sync();
+    if (st.bDone) next("");
   }
 
   var timers = [];
-  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
-  function later(fn, ms) { timers.push(setTimeout(fn, reduce ? Math.min(ms, 60) : ms)); }
-  function renderWatch() {
-    clearTimers();
-    var nodes = [[30, 25], [30, 65], [30, 105], [150, 15], [150, 50], [150, 85], [150, 120], [270, 35], [270, 65], [270, 95]];
-    var links = []; [0, 1, 2].forEach(function (a) { [3, 4, 5, 6].forEach(function (b) { links.push([a, b]); }); }); [3, 4, 5, 6].forEach(function (a) { [7, 8, 9].forEach(function (b) { links.push([a, b]); }); });
-    var brain = '<svg class="brain" viewBox="0 0 300 135" id="brain">' + links.map(function (l, i) { var a = nodes[l[0]], b = nodes[l[1]]; return '<line data-i="' + i + '" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'; }).join("") +
-      nodes.map(function (n, i) { return '<circle data-i="' + i + '" cx="' + n[0] + '" cy="' + n[1] + '" r="9"/>'; }).join("") + "</svg>";
-    app.innerHTML = head(1, "Starter · How it works", "How does an AI learn to see?", "Watch how a Smart Recycling Bin learns to sort waste using image classification.") +
-      '<div class="pipe">' +
-      '<div class="pstep" id="p1" style="--c:var(--t1);--cs:var(--t1-soft)"><h4><span>1</span>Collect data</h4><div class="buckets">' +
-      ["Plastic", "Paper", "Metal"].map(function (c) { return '<div class="bucket"><b>' + c + '</b><div class="items" id="bk' + c + '"></div><div class="n" id="bn' + c + '">0 images</div></div>'; }).join("") + "</div></div>" +
-      '<div class="pstep" id="p2" style="--c:var(--t3);--cs:var(--t3-soft)"><h4><span>2</span>Train the model</h4>' + brain + '<div class="prog"><i id="tprog"></i></div><div class="note" id="tlabel" style="margin-top:6px">Waiting…</div></div>' +
-      '<div class="pstep" id="p3" style="--c:var(--t2);--cs:var(--t2-soft)"><h4><span>3</span>Predict</h4><div class="cam" id="camItem">❔</div><div class="bars">' +
-      [["Plastic", "var(--t1)"], ["Paper", "var(--t3)"], ["Metal", "var(--t2)"]].map(function (b) { return '<div><span>' + b[0] + '</span><span class="track"><i id="bar' + b[0] + '" style="background:' + b[1] + '"></i></span><em id="pc' + b[0] + '">0%</em></div>'; }).join("") + "</div></div></div>" +
-      '<div class="card"><p class="say" id="say" style="margin-top:0"></p><div class="words" id="words">' +
-      [["class", "Class", "a group, e.g. Plastic"], ["data", "Training data", "labelled example images"], ["model", "Model", "what the AI learns"], ["pred", "Prediction", "the AI’s answer"], ["conf", "Confidence", "how sure it is, in %"]].map(function (w) { return '<span data-w="' + w[0] + '"><b>' + w[1] + "</b> – " + w[2] + "</span>"; }).join("") +
-      '</div><div class="actions"><button class="btn ghost" id="replay" type="button">Replay</button><button class="btn primary" id="toMatch" type="button" disabled>Play AI Match →</button></div></div>';
-    $("replay").onclick = renderWatch;
-    $("toMatch").onclick = function () { clearTimers(); S.starter.phase = "match"; save(); renderStarter(); window.scrollTo(0, 0); };
-    var say = function (t) { $("say").innerHTML = t; };
-    var lit = function (w) { var el = document.querySelector('#words [data-w="' + w + '"]'); if (el) el.classList.add("lit"); };
-    var on = function (id) { ["p1", "p2", "p3"].forEach(function (p) { $(p).classList.toggle("on", p === id); }); };
+  function later(fn, ms) { timers.push(setTimeout(fn, reduce ? Math.min(ms, 80) : ms)); }
+  function watch() {
+    timers.forEach(clearTimeout); timers = [];
+    app.innerHTML = '<div class="head"><span class="tag">Starter</span><h2>How an AI learns to see</h2></div>' +
+      '<div class="pipe pop">' +
+      '<div class="ps" id="s1" style="--c:var(--t1);--cs:var(--t1-soft)"><h3><span>1</span>Data</h3><div class="piles">' +
+      ["Plastic", "Paper", "Metal"].map(function (c) { return "<div>" + c + '<br><span id="pl' + c + '"></span></div>'; }).join("") + "</div></div>" +
+      '<div class="ps" id="s2" style="--c:var(--t3);--cs:var(--t3-soft)"><h3><span>2</span>Train</h3><div class="prog"><i id="tp"></i></div><div id="tl" style="font-size:15px">&nbsp;</div></div>' +
+      '<div class="ps" id="s3" style="--c:var(--t2);--cs:var(--t2-soft)"><h3><span>3</span>Predict</h3><div class="cam" id="cam">❔</div><div class="bars">' +
+      [["Plastic", "var(--t1)"], ["Paper", "var(--t3)"], ["Metal", "var(--t2)"]].map(function (b) { return "<div><span>" + b[0] + '</span><span class="tr"><i id="b' + b[0] + '" style="background:' + b[1] + '"></i></span><em id="p' + b[0] + '"></em></div>'; }).join("") +
+      "</div></div></div>" +
+      '<p class="caption" id="cap"></p>' +
+      '<div class="row"><button class="btn" id="again" type="button">Replay</button><button class="btn primary" id="nx" type="button" disabled>Next →</button></div>';
+    var on = function (n) { ["s1", "s2", "s3"].forEach(function (id, k) { $(id).classList.toggle("on", k === n); $(id).classList.toggle("done", k < n); }); };
+    var cap = function (t) { $("cap").textContent = t; };
     var ICON = { Plastic: "🧴", Paper: "📄", Metal: "🥫" };
-    var t = 300;
-    later(function () { on("p1"); say("<b>Step 1 – Collect data.</b> We show the computer many example images and label each one with its <b>class</b>."); lit("class"); }, t);
-    var order = ["Plastic", "Paper", "Metal", "Plastic", "Paper", "Metal", "Plastic", "Paper", "Metal"], cnt = { Plastic: 0, Paper: 0, Metal: 0 };
-    order.forEach(function (c, i) {
-      later(function () {
-        cnt[c]++; var s = document.createElement("span"); s.textContent = ICON[c]; $("bk" + c).appendChild(s);
-        $("bn" + c).textContent = (cnt[c] * 10) + " images";
-        if (i === 4) { say("These labelled images are called the <b>training data</b>. More examples, from different angles, help the AI learn better."); lit("data"); }
-      }, t + 900 + i * 450);
+    later(function () { on(0); cap("1. We give the AI lots of labelled pictures – this is data."); }, 200);
+    ["Plastic", "Paper", "Metal", "Plastic", "Paper", "Metal", "Plastic", "Paper", "Metal"].forEach(function (c, i) {
+      later(function () { var s = document.createElement("i"); s.textContent = ICON[c]; $("pl" + c).appendChild(s); }, 700 + i * 350);
     });
-    t += 900 + order.length * 450 + 1200;
-    later(function () { on("p2"); say("<b>Step 2 – Train.</b> The computer looks for patterns – shape, colour, shine – that make each class different. What it learns is called the <b>model</b>."); lit("model"); }, t);
-    for (var k = 0; k <= 20; k++) (function (k) {
-      later(function () {
-        $("tprog").style.width = (k * 5) + "%"; $("tlabel").textContent = k < 20 ? "Training… " + (k * 5) + "%" : "Model trained ✓";
-        document.querySelectorAll("#brain line").forEach(function (l, i) { l.classList.toggle("hot", (i + k) % 4 === 0); });
-        document.querySelectorAll("#brain circle").forEach(function (c, i) { c.classList.toggle("hot", (i + k) % 3 === 0 && k < 20); });
-      }, t + 400 + k * 160);
-    })(k);
-    t += 400 + 21 * 160 + 900;
+    later(function () { on(1); cap("2. The AI finds patterns in the pictures – this is training."); }, 4300);
+    for (var k = 0; k <= 20; k++) (function (k) { later(function () { $("tp").style.width = k * 5 + "%"; $("tl").textContent = k < 20 ? "Training… " + k * 5 + "%" : "Model trained ✓"; }, 4700 + k * 110); })(k);
+    later(function () { on(2); $("cam").textContent = "🧴"; cap("3. Show it a new bottle. It makes a prediction…"); }, 7400);
     later(function () {
-      on("p3"); $("camItem").textContent = "🧴";
-      say("<b>Step 3 – Predict.</b> We show a <b>new</b> bottle it has never seen. The model makes a <b>prediction</b>…"); lit("pred");
-    }, t);
-    later(function () {
-      [["Plastic", 92], ["Paper", 6], ["Metal", 2]].forEach(function (b) { $("bar" + b[0]).style.width = b[1] + "%"; $("pc" + b[0]).textContent = b[1] + "%"; });
-      say("…<b>Plastic, 92% confidence.</b> The bin opens the plastic section. Data → Train → Model → Predict!"); lit("conf");
-      var b = $("toMatch"); b.disabled = false; b.classList.add("ready");
-    }, t + 1400);
+      [["Plastic", 92], ["Paper", 6], ["Metal", 2]].forEach(function (b) { $("b" + b[0]).style.width = b[1] + "%"; $("p" + b[0]).textContent = b[1] + "%"; });
+      cap("…Plastic, 92% sure! Data → Train → Predict.");
+      $("nx").disabled = false;
+    }, 8600);
+    $("again").onclick = watch;
+    $("nx").onclick = function () { timers.forEach(clearTimeout); S.st.phase = "match"; save(); starter(); };
   }
 
-  function renderMatch() {
-    var st = S.starter;
-    if (st.idx >= MATCH.length) {
-      app.innerHTML = head(1, "Starter · up to 40 points", "Starter complete!", "You scored " + st.score + " out of 40. Now train your own AI in Teachable Machine.") +
-        '<div class="card"><p style="margin:0;font-size:17px">You matched a real UAE problem to the right AI system. In the main activity you will build an <b>image classification</b> model yourself.</p><div class="actions"><button class="btn primary ready" id="toMain" type="button">Go to the Main Activity →</button></div></div>';
-      $("toMain").onclick = function () { go("main"); sendToSheet(); };
-      return;
-    }
-    var m = MATCH[st.idx];
-    app.innerHTML = head(1, "Starter · Question 2 of 2 · 20 points", "Which AI system solves the problem?", "Read the real-world problem and choose the best AI system. 20 points for a first try, 10 for a second try.") +
-      '<div class="card"><div class="problem pop"><span class="ic">' + m.e + '</span><div><div class="n">Real-world problem</div><div class="q">' + esc(m.q) + "</div></div></div>" +
-      '<div class="opts" id="opts">' + SYSTEMS.map(function (s) { return '<button type="button" class="opt" data-id="' + s.id + '"><span class="e">' + s.e + "</span><span><b>" + s.name + "</b><small>" + s.d + "</small></span></button>"; }).join("") + "</div>" +
-      '<div id="mMsg"></div><div class="actions" id="mAct"></div></div>';
-    var btns = document.querySelectorAll("#opts .opt");
+  function matchQ() {
+    var st = S.st;
+    app.innerHTML = '<div class="head"><span class="tag">Starter · 2 / 2</span></div>' +
+      '<div class="card pop"><div class="problem"><span class="e">' + MATCH.e + "</span><span>" + esc(MATCH.q) + "</span></div>" +
+      '<p style="margin:0 0 12px;color:var(--muted)">Which AI can do this?</p><div class="opts" id="opts">' +
+      SYSTEMS.map(function (s) { return '<button type="button" class="opt" data-id="' + s.id + '"><span class="e">' + s.e + "</span>" + s.name + "</button>"; }).join("") +
+      '</div><div id="mMsg" style="margin-top:12px"></div><div class="row" id="mAct" style="margin-top:12px"></div></div>';
+    var btns = app.querySelectorAll(".opt");
+    var finish = function (msg) {
+      btns.forEach(function (x) { x.disabled = true; if (x.dataset.id === MATCH.a) x.classList.add("right"); });
+      $("mMsg").innerHTML = msg;
+      $("mAct").innerHTML = '<button class="btn primary" id="nx" type="button">Go to the Main Activity →</button>';
+      $("nx").onclick = function () { go("main"); };
+    };
+    if (st.mDone) { finish(""); return; }
     btns.forEach(function (b) {
       b.onclick = function () {
-        var ok = b.dataset.id === m.a, name = b.querySelector("b").textContent;
-        if (ok) {
-          var pts = st.tries === 0 ? 20 : st.tries === 1 ? 10 : 0;
-          st.score += pts; st.mLog = (st.mLog || []).concat((st.idx + 1) + ": " + name + (st.tries ? " (try " + (st.tries + 1) + ")" : "")); st.idx++; st.tries = 0; save();
-          b.classList.add("right"); btns.forEach(function (x) { x.disabled = true; });
-          $("mMsg").innerHTML = '<div class="msg good">Correct! ' + esc(m.why) + "</div>"; award(pts, pts ? "Correct!" : "");
-          $("mAct").innerHTML = '<button class="btn primary ready" id="mNext" type="button">' + (st.idx < MATCH.length ? "Next problem →" : "Finish the starter →") + "</button>";
-          $("mNext").onclick = function () { renderMatch(); if (st.idx >= MATCH.length) sendToSheet(); };
+        var name = SYSTEMS.filter(function (x) { return x.id === b.dataset.id; })[0].name;
+        if (b.dataset.id === MATCH.a) {
+          st.match = st.mTries ? 10 : 20; st.mDone = true; st.mLog = (st.mLog || []).concat(name + (st.mTries ? " (try 2)" : "")); save();
+          award(st.match, "Correct!"); finish('<div class="msg good">Yes! Sorting photos into groups is image classification.</div>'); sendToSheet();
         } else {
-          st.tries++; b.classList.add("wrong"); b.disabled = true; save();
-          if (st.tries >= 2) {
-            st.mLog = (st.mLog || []).concat((st.idx + 1) + ": wrong twice");
-            btns.forEach(function (x) { x.disabled = true; if (x.dataset.id === m.a) x.classList.add("right"); });
-            st.idx++; st.tries = 0; save();
-            $("mMsg").innerHTML = '<div class="msg info">' + esc(m.why) + "</div>";
-            $("mAct").innerHTML = '<button class="btn primary ready" id="mNext" type="button">' + (st.idx < MATCH.length ? "Next problem →" : "Finish the starter →") + "</button>";
-            $("mNext").onclick = function () { renderMatch(); if (st.idx >= MATCH.length) sendToSheet(); };
-          } else $("mMsg").innerHTML = '<div class="msg bad">Not quite – think about what the AI has to look at, hear or read. Try again for 10 points!</div>';
+          st.mTries++; b.classList.add("wrong"); b.disabled = true; save();
+          if (st.mTries >= 2) { st.mDone = true; st.mLog = (st.mLog || []).concat("wrong twice"); save(); finish('<div class="msg info">Answer: image classification – it sorts photos into groups.</div>'); sendToSheet(); }
+          else $("mMsg").innerHTML = '<div class="msg bad">Try again!</div>';
         }
       };
     });
   }
 
-  /* ================= main ================= */
-  function tmMock(level) {
-    var cl = classList(); if (!cl.length) cl = ["Class 1", "Class 2"];
-    var counts = S.main.counts, cols = ["#2A9D8F", "#E76F51", "#3A6FD8", "#7A55C7"];
-    var cards = cl.map(function (c, i) {
-      var n = level >= 1 ? (counts[c] || (level >= 2 ? 30 : 0)) : 0, th = "";
-      for (var k = 0; k < Math.min(6, Math.ceil(n / 5)); k++) th += "<i></i>";
-      return '<div class="tm-card' + (level === 0 && i === 0 ? " hl" : "") + '"><b>' + esc(c) + ' <i>✎</i></b><div class="tm-btns"><span class="' + (level === 1 && i === 0 ? "hl" : "") + '">Webcam</span><span>Upload</span></div><div class="tm-thumbs">' + th + "</div>" + (n ? '<div style="font-size:11px;color:#5F6368;margin-top:3px">' + n + " Image Samples</div>" : "") + "</div>";
-    }).join("") + '<div class="tm-add' + (level === 0 ? " hl" : "") + '">⊕ Add a class</div>';
-    var prev = level >= 2 ? '<div class="vid">' + (level >= 3 ? "🧴" : "🎥") + "</div><b style=\"font-size:12px\">Output</b>" +
-      cl.map(function (c, i) { var w = level >= 3 ? (i === 0 ? 90 : Math.max(2, 8 - i * 3)) : 33; return '<div class="ob"><span>' + esc(c) + '</span><i style="width:' + w + "%;background:" + cols[i % 4] + '"></i></div>'; }).join("")
-      : '<div style="color:#80868B;font-size:12px;padding:16px 0;text-align:center">You must train a model on the left before you can preview it here.</div>';
-    return '<div class="tm-screen"><div class="tm-col">' + cards + '</div><div class="tm-train' + (level === 2 ? " hl" : "") + '"><b>Training</b><span>' + (level >= 3 ? "Model Trained" : "Train Model") + '</span><div style="font-size:11px;color:#5F6368;margin-top:6px">Advanced ⌄</div></div><div class="tm-prev' + (level === 3 ? " hl" : "") + '"><b>Preview</b>' + prev + "</div></div>";
-  }
-
-  function renderMain() {
-    var m = S.main, i = m.level, L = MAIN[i];
+  /* ---------- main: 4 levels in Teachable Machine (level 4 is a bonus) ---------- */
+  function main() {
+    var m = S.mn, i = m.lv, L = MAIN[i];
     theme(i);
-    var levels = MAIN.map(function (x, k) { var c = k < i ? "ok" : k === i ? "cur" : "lock"; return '<div class="' + c + '" style="--c:var(' + TC[k][0] + ");--cs:var(" + TC[k][1] + ')"><span class="dot">' + (m.done[k] ? "✓" : k + 1) + "</span>" + x.name + "</div>"; }).join("");
-    var body = "";
-    var mi = mission(), pr = project(), cl = classList();
+    var dots = MAIN.map(function (_, k) { return '<span class="' + (m.score[k] ? "done" : k === i ? "on" : "") + '">' + (m.score[k] ? "✓" : k === 3 ? "★" : k + 1) + "</span>"; }).join("");
+    var body = "", locked = !!m.score[i], cl = classList();
     if (i === 0) {
-      body = '<div class="card"><h3>A · Choose a real-world problem</h3><div class="picks" id="projPick">' +
-        PROJECTS.map(function (p) { return '<button type="button" class="pick' + (m.project === p.id ? " sel" : "") + '" data-id="' + p.id + '"' + (m.done[0] ? " disabled" : "") + '><span class="e">' + p.e + "</span><b>" + p.name + "</b><small>" + esc(p.problem) + "</small></button>"; }).join("") + "</div>" +
-        '<h3 style="margin-top:18px">B · Choose your mission</h3><div class="picks" id="misPick">' +
-        MISSIONS.map(function (x) { return '<button type="button" class="pick' + (m.mission === x.id ? " sel" : "") + '" data-id="' + x.id + '"' + (m.done[0] ? " disabled" : "") + '><span class="e">' + x.e + "</span><b>" + x.name + "</b><small>" + x.d + "</small></button>"; }).join("") + "</div>" +
-        '<h3 style="margin-top:18px">C · Name your classes</h3><div class="classrow" id="names"></div>' +
-        '<h3 style="margin-top:18px">D · In Teachable Machine</h3><ol class="steps"><li>Open Teachable Machine with the button below (it opens in a new tab).</li><li>Click <b>Get Started → Image Project → Standard image model</b>.</li><li>Rename <b>Class 1</b> and <b>Class 2</b> to your class names. Click <b>Add a class</b> if your mission needs more.</li></ol>' +
-        '<a class="tm-link" href="https://teachablemachine.withgoogle.com/train/image" target="_blank" rel="noopener">Open Teachable Machine ↗</a></div>';
+      body = '<div class="picks" id="pp">' + PROJECTS.map(function (p) { return '<button type="button" class="pick' + (m.project === p.id ? " sel" : "") + '" data-id="' + p.id + '"' + (locked ? " disabled" : "") + '><span class="e">' + p.e + "</span><b>" + p.name + "</b><small>" + p.d + "</small></button>"; }).join("") + "</div>" +
+        '<div class="trio" id="names"' + (m.project ? "" : " hidden") + ">" + [0, 1, 2].map(function (k) { return '<div class="field"><label for="n' + k + '">Class ' + (k + 1) + '</label><input id="n' + k + '" maxlength="20" value="' + esc(m.names[k]) + '"' + (locked ? " disabled" : "") + "></div>"; }).join("") + "</div>";
     } else if (i === 1) {
-      body = '<div class="card"><h3>Collect images for each class</h3><ol class="steps"><li>Under each class, click <b>Webcam</b> (or <b>Upload</b> if your teacher gave you photos).</li><li>Show ' + esc(pr ? pr.objects : "your objects") + '. Press and hold <b>Hold to Record</b>.</li><li>While recording, slowly turn the object and move it closer and further away.</li>' + (mi && mi.id === "gold" ? "<li>For the <b>Nothing</b> class, record the empty background with no object.</li>" : "") +
-        '<li>Aim for at least <b>' + (mi ? mi.min : 20) + " images</b> in every class.</li></ol>" +
-        '<h3 style="margin-top:18px">How many image samples does each class have?</h3><div class="classrow" id="counts">' +
-        cl.map(function (c, k) { return '<div class="field"><label for="cnt' + k + '">' + esc(c) + '</label><input id="cnt' + k + '" type="number" min="0" max="999" inputmode="numeric" data-c="' + esc(c) + '" value="' + (m.counts[c] != null ? m.counts[c] : "") + '"' + (m.done[1] ? " disabled" : "") + "></div>"; }).join("") + "</div></div>";
-    } else if (i === 2) {
-      body = '<div class="card"><h3>Train the model</h3><ol class="steps"><li>In the <b>Training</b> box, click <b>Train Model</b>.</li><li>Wait until it says <b>Model Trained</b> – about 20 to 60 seconds. Stay on the Teachable Machine tab while it trains.</li><li>Look at the <b>Preview</b> panel: you should see your webcam and an <b>Output</b> bar for each class.</li><li>Hold up one of your objects. The bar for the right class should grow.</li></ol>' +
-        '<div class="msg info" style="font-weight:400"><b>What is happening?</b> The computer compares all your images and finds the patterns – shape, colour, edges – that make each class different. That pattern-finder is your <b>model</b>.</div></div>';
-    } else {
-      body = '<div class="card"><h3>Test each class 5 times</h3><p style="margin:0 0 10px">Show each object (or gesture) to the camera 5 times, in different positions. Count how many times the right class had the longest bar, then tap the number below.' + (mi && mi.id === "gold" ? ' <b>Gold:</b> also show your model an object it has never seen and watch what it predicts.' : "") + '</p><div class="testgrid" id="tests">' +
-        cl.map(function (c) { var v = m.tests[c]; return '<div class="row"><b>' + esc(c) + '</b><div class="dots5" data-c="' + esc(c) + '">' + [0, 1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-v="' + n + '" class="' + (v === n ? "sel" : "") + '"' + (m.done[3] ? " disabled" : "") + ">" + n + "</button>"; }).join("") + "</div></div>"; }).join("") +
-        '</div><div class="meter"><div class="ring" id="accRing" style="--p:0"><span id="accTxt">–</span></div><div id="accMsg" class="note" style="margin:0;font-size:15px">Choose a score for every class to see your accuracy.</div></div>' +
-        "</div>";
+      body = '<div class="trio">' + cl.map(function (c, k) { return '<div class="field"><label for="c' + k + '">' + esc(c) + '</label><input id="c' + k + '" type="number" min="0" max="999" inputmode="numeric" data-c="' + esc(c) + '" value="' + (m.counts[c] != null ? m.counts[c] : "") + '"' + (locked ? " disabled" : "") + "></div>"; }).join("") + "</div>";
+    } else if (i === 3) {
+      body = '<div class="score5">' + cl.map(function (c) { return '<div class="r"><b>' + esc(c) + '</b><div class="dots" data-c="' + esc(c) + '">' + [0, 1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-v="' + n + '" class="' + (m.tests[c] === n ? "sel" : "") + '"' + (locked ? " disabled" : "") + ">" + n + "</button>"; }).join("") + "</div></div>"; }).join("") + '</div><div class="acc" id="acc"></div>';
     }
-    app.innerHTML = head(2, "Main activity · Level " + (i + 1) + " of 4 · 30 points", L.title, "Do this part in Teachable Machine. Keep this page open in another tab to follow the steps and record your results.") +
-      '<div class="levels">' + levels + "</div>" +
-      '<div class="grid2"><div class="stack">' + body +
-      '<div class="card"><h3>Check your work <small>(30 pts)</small></h3><div class="checklist" id="clist">' +
-      L.checks.map(function (c, k) { var id = "c" + i + "_" + k; return '<label for="' + id + '"><input type="checkbox" id="' + id + '"' + (m.ticks[id] || m.done[i] ? " checked" : "") + (m.done[i] ? " disabled" : "") + "><span>" + c + "</span></label>"; }).join("") +
-      '</div><div id="lvMsg"></div><div class="actions"><button class="btn primary" id="lvBtn" type="button">Level complete ✓</button></div></div>' +
-      '<div class="actions" id="mainActions" style="margin-top:0"></div></div>' +
-      '<div class="tm"><div class="label"><span class="pill">LEVEL ' + (i + 1) + '</span>In Teachable Machine, look for the yellow outline</div>' + tmMock(i) + '<div class="tip"><b>Tip:</b> ' + esc(L.tip) + "</div></div></div>";
+    app.innerHTML = '<div class="head"><span class="tag">' + (i === 3 ? "Main · Bonus level" : "Main · Level " + (i + 1) + " of 3") + '</span><div class="lv">' + dots + "</div></div>" +
+      '<div class="card pop"><h2>' + L.title + '</h2><p class="line">' + L.line + "</p>" + body +
+      '<div class="row" style="margin-top:16px"><a class="btn tm" href="' + TM_URL + '" target="_blank" rel="noopener">Open Teachable Machine ↗</a><button class="btn link" id="hintBtn" type="button">Show hint</button></div>' +
+      '<p class="tip" id="hint" hidden>' + esc(L.tip) + "</p></div>" +
+      '<div class="row" id="mAct"><button class="btn primary" id="doneBtn" type="button">' + (i === 2 ? "My model is trained ✓" : "Done ✓") + '</button></div><div id="mMsg"></div>';
+    $("hintBtn").onclick = function () { var h = $("hint"); h.hidden = !h.hidden; this.textContent = h.hidden ? "Show hint" : "Hide hint"; };
 
-    // level-specific wiring
     if (i === 0) {
-      var drawNames = function () {
-        var mi2 = mission(), n = mi2 ? mi2.n : 3, h = "";
-        for (var k = 0; k < n; k++) h += '<div class="field"><label for="nm' + k + '">Class ' + (k + 1) + '</label><input id="nm' + k + '" maxlength="20" placeholder="e.g. ' + esc(PROJECTS[0].classes[k]) + '" value="' + esc(m.names[k] || "") + '"' + (m.done[0] ? " disabled" : "") + "></div>";
-        if (mi2 && mi2.id === "gold") h += '<div class="field"><span class="lab">Class ' + (n + 1) + '</span><input value="Nothing" disabled></div>';
-        $("names").innerHTML = h;
-        for (var j = 0; j < n; j++) (function (j) { $("nm" + j).addEventListener("input", function (e) { m.names[j] = e.target.value; save(); }); })(j);
-      };
-      document.querySelectorAll("#projPick .pick").forEach(function (b) { b.onclick = function () { m.project = b.dataset.id; var p = project(); m.names = p.classes.slice(); save(); document.querySelectorAll("#projPick .pick").forEach(function (x) { x.classList.toggle("sel", x === b); }); drawNames(); }; });
-      document.querySelectorAll("#misPick .pick").forEach(function (b) { b.onclick = function () { m.mission = b.dataset.id; save(); document.querySelectorAll("#misPick .pick").forEach(function (x) { x.classList.toggle("sel", x === b); }); drawNames(); }; });
-      drawNames();
+      app.querySelectorAll("#pp .pick").forEach(function (b) {
+        b.onclick = function () {
+          m.project = b.dataset.id; m.names = project().classes.slice(); save(); $("mMsg").innerHTML = "";
+          app.querySelectorAll("#pp .pick").forEach(function (x) { x.classList.toggle("sel", x === b); });
+          $("names").hidden = false; [0, 1, 2].forEach(function (k) { $("n" + k).value = m.names[k]; });
+          if (m.project === "own") $("n0").focus();
+        };
+      });
+      [0, 1, 2].forEach(function (k) { $("n" + k).oninput = function () { m.names[k] = this.value; save(); }; });
     }
-    if (i === 1) document.querySelectorAll("#counts input").forEach(function (inp) { inp.addEventListener("input", function () { var v = parseInt(inp.value, 10); if (isNaN(v)) delete m.counts[inp.dataset.c]; else m.counts[inp.dataset.c] = Math.max(0, v); save(); }); });
+    if (i === 1) app.querySelectorAll(".trio input").forEach(function (inp) { inp.oninput = function () { var v = parseInt(inp.value, 10); if (isNaN(v)) delete m.counts[inp.dataset.c]; else m.counts[inp.dataset.c] = Math.max(0, v); save(); }; });
     if (i === 3) {
       var showAcc = function () {
         var a = accuracy(), all = cl.every(function (c) { return m.tests[c] != null; });
-        $("accRing").style.setProperty("--p", a || 0); $("accTxt").textContent = a == null ? "–" : a + "%";
-        if (!all) { $("accMsg").textContent = "Choose a score for every class to see your accuracy."; return; }
-        var weak = cl.filter(function (c) { return m.tests[c] < 4; });
-        $("accMsg").innerHTML = weak.length ? "Your model is <b>" + a + "% accurate</b>. Improve <b>" + esc(weak.join(", ")) + "</b>: add about 10 more varied images, train again and test again." : "Excellent! Your model is <b>" + a + "% accurate</b> – every class scored 4 or 5.";
+        $("acc").textContent = all ? "Accuracy: " + a + "%" : "";
       };
-      document.querySelectorAll("#tests .dots5").forEach(function (g) {
+      app.querySelectorAll(".dots").forEach(function (g) {
         g.querySelectorAll("button").forEach(function (b) { b.onclick = function () { m.tests[g.dataset.c] = +b.dataset.v; save(); g.querySelectorAll("button").forEach(function (x) { x.classList.toggle("sel", x === b); }); showAcc(); }; });
       });
       showAcc();
     }
 
-    var boxes = document.querySelectorAll("#clist input");
-    var upd = function () {
-      var all = [].every.call(boxes, function (b) { return b.checked; });
-      $("lvBtn").disabled = m.done[i] || !all; $("lvBtn").classList.toggle("ready", all && !m.done[i]);
-      $("lvBtn").textContent = m.done[i] ? "Level complete ✓ +30" : "Level complete ✓";
-    };
-    boxes.forEach(function (b) { b.addEventListener("change", function () { m.ticks[b.id] = b.checked; save(); upd(); }); });
     var need = function () {
-      var mi3 = mission(), cl3 = classList();
       if (i === 0) {
-        if (!m.project) return "Choose a real-world problem (A).";
-        if (!m.mission) return "Choose your mission (B).";
-        for (var k = 0; k < mi3.n; k++) if (!(m.names[k] || "").trim()) return "Type a name for every class (C).";
+        if (!m.project) return "Choose a project.";
+        if (m.names.some(function (n) { return !(n || "").trim(); })) return "Type a name for all 3 classes.";
       }
       if (i === 1) {
-        var low = cl3.filter(function (c) { return m.counts[c] == null; });
-        if (low.length) return "Type the number of images for " + low.join(", ") + ".";
-        var few = cl3.filter(function (c) { return m.counts[c] < mi3.min; });
-        if (few.length) return "Your mission needs at least " + mi3.min + " images per class. Record more for " + few.join(", ") + " in Teachable Machine, then update the numbers.";
+        var miss = cl.filter(function (c) { return m.counts[c] == null; });
+        if (miss.length) return "Type the number of images for " + miss.join(", ") + ".";
+        var few = cl.filter(function (c) { return m.counts[c] < MIN_IMG; });
+        if (few.length) return "Record at least " + MIN_IMG + " images for " + few.join(", ") + ".";
       }
-      if (i === 3) {
-        if (cl3.some(function (c) { return m.tests[c] == null; })) return "Choose a test score for every class.";
-      }
+      if (i === 3 && cl.some(function (c) { return m.tests[c] == null; })) return "Tap a score for every class.";
       return "";
     };
-    $("lvBtn").onclick = function () {
-      var n = need();
-      if (n) { $("lvMsg").innerHTML = '<div class="msg bad">' + esc(n) + "</div>"; return; }
-      $("lvMsg").innerHTML = "";
-      m.done[i] = true; m.score[i] = 30; save();
-      boxes.forEach(function (b) { b.disabled = true; });
-      document.querySelectorAll(".grid2 .stack .card:first-child input, .grid2 .stack .card:first-child select, .grid2 .stack .card:first-child .pick, .grid2 .stack .card:first-child .dots5 button").forEach(function (x) { x.disabled = true; });
-      upd(); award(30, "Level " + (i + 1) + " complete!"); nextBtn(); sendToSheet();
+    var nextBtns = function () {
+      if (i === 2) {
+        $("mAct").innerHTML = '<button class="btn primary" id="nx" type="button">Try the bonus level →</button><button class="btn" id="skip" type="button">Go to the Plenary →</button>';
+        $("skip").onclick = function () { go("plenary"); };
+      } else {
+        $("mAct").innerHTML = '<button class="btn primary" id="nx" type="button">' + (i === 3 ? "Go to the Plenary →" : "Next level →") + "</button>";
+      }
+      $("nx").onclick = function () { if (i === 3) go("plenary"); else { m.lv++; save(); main(); scrollTo(0, 0); sendToSheet(); } };
     };
-    upd();
-    function nextBtn() {
-      $("mainActions").innerHTML = '<button class="btn primary ready" id="nextLv" type="button">' + (i === 3 ? "Finish – go to the Plenary →" : "Next level →") + "</button>";
-      $("nextLv").onclick = function () { if (i === 3) { go("plenary"); sendToSheet(); return; } m.level = i + 1; save(); renderMain(); window.scrollTo(0, 0); };
+    var good = function () { $("mMsg").innerHTML = '<div class="msg good">' + (i === 3 ? "Bonus level" : "Level " + (i + 1)) + " complete!" + (i === 3 && accuracy() != null ? " Your model is " + accuracy() + "% accurate." : "") + "</div>"; };
+    $("doneBtn").onclick = function () {
+      var n = need();
+      if (n) { $("mMsg").innerHTML = '<div class="msg bad"></div>'; $("mMsg").firstChild.textContent = n; return; }
+      m.score[i] = 30; save(); award(30, i === 3 ? "Bonus done!" : "Level " + (i + 1) + " done!");
+      app.querySelectorAll(".card input, .card .pick, .card .dots button").forEach(function (x) { x.disabled = true; });
+      good(); nextBtns(); sendToSheet();
+    };
+    if (locked) { good(); nextBtns(); }
+    else if (i === 3) {
+      $("mAct").insertAdjacentHTML("beforeend", '<button class="btn" id="skip" type="button">Skip to the Plenary →</button>');
+      $("skip").onclick = function () { go("plenary"); };
     }
-    if (m.done[i]) nextBtn();
   }
 
-  /* ================= plenary ================= */
-  function renderPlenary() {
+  /* ---------- plenary ---------- */
+  function plenary() {
     theme(2);
-    var p = S.plenary;
-    var prog = QUIZ.map(function (_, k) { return '<i class="' + (k < p.marks.length ? (p.marks[k] ? "ok" : "no") : k === p.idx ? "cur" : "") + '"></i>'; }).join("");
-    var h = head(3, "Plenary · up to 40 points", "Final Challenge", "Two questions, one try each – 20 points for each correct answer.");
-    if (p.idx >= QUIZ.length) {
-      app.innerHTML = h + '<div class="card"><div class="qprog">' + prog + '</div><h3 style="margin-top:16px">Plenary score: ' + p.score + ' / 40</h3><div class="actions"><button class="btn primary ready" id="finish" type="button">See my results →</button></div></div>';
-      $("finish").onclick = function () { go("done"); sendToSheet(); };
-      return;
-    }
+    var p = S.pl;
+    if (p.idx >= QUIZ.length) { go("done"); return; }
     var q = QUIZ[p.idx];
-    app.innerHTML = h + '<div class="card"><div class="qprog">' + prog + '</div><p style="font-family:var(--font-display);font-weight:600;font-size:clamp(20px,3vw,26px);margin:16px 0 14px">' + (p.idx + 1) + ". " + esc(q.q) + '</p><div class="mcq" id="pq">' +
-      q.opts.map(function (o, k) { return '<button type="button" data-k="' + k + '"><span class="k">' + "ABCD"[k] + "</span><span>" + esc(o) + "</span></button>"; }).join("") + '</div><div id="pMsg"></div><div class="actions" id="pAct"></div></div>';
-    var btns = document.querySelectorAll("#pq button");
+    app.innerHTML = '<div class="head"><span class="tag">Plenary · ' + (p.idx + 1) + " / " + QUIZ.length + "</span></div>" +
+      '<div class="card pop"><h2>' + esc(q.q) + '</h2><div class="mcq" id="mcq">' +
+      q.opts.map(function (o, k) { return '<button type="button" data-k="' + k + '"><span class="k">' + "ABCD"[k] + "</span>" + esc(o) + "</button>"; }).join("") +
+      '</div><div class="row" id="pAct" style="margin-top:16px"></div></div>';
+    var btns = app.querySelectorAll("#mcq button");
     btns.forEach(function (b) {
       b.onclick = function () {
         var k = +b.dataset.k, ok = k === q.a;
         btns.forEach(function (x) { x.disabled = true; if (+x.dataset.k === q.a) x.classList.add("right"); });
         if (!ok) b.classList.add("wrong");
-        p.marks.push(ok); p.chosen.push(q.opts[k]); if (ok) p.score += QPTS; p.idx++; save();
-        $("pMsg").innerHTML = ok ? '<div class="msg good">Correct!</div>' : '<div class="msg bad">The answer is: ' + esc(q.opts[q.a]) + "</div>";
-        if (ok) award(QPTS, "Correct!"); else renderBar();
-        $("pAct").innerHTML = '<button class="btn primary ready" id="pNext" type="button">' + (p.idx < QUIZ.length ? "Next question →" : "See my results →") + "</button>";
-        $("pNext").onclick = function () { if (p.idx < QUIZ.length) renderPlenary(); else { go("done"); sendToSheet(); } };
+        p.marks.push(ok); p.chosen.push(q.opts[k]); if (ok) p.score += 20; p.idx++; save();
+        if (ok) award(20, "Correct!"); else bar();
+        $("pAct").innerHTML = '<button class="btn primary" id="nx" type="button">' + (p.idx < QUIZ.length ? "Next →" : "See my score →") + "</button>";
+        $("nx").onclick = function () { if (p.idx < QUIZ.length) plenary(); else go("done"); };
       };
     });
   }
 
-  /* ================= results ================= */
-  function renderDone() {
+  /* ---------- results ---------- */
+  function done() {
     theme(0);
-    var sc = scores(), lv = levelFor(sc.total), pr = project(), a = accuracy();
-    app.innerHTML =
-      '<section class="result pop"><div class="ring">' + sc.total + '</div><div class="eyebrow">Quest complete · Class ' + esc(S.cls) + " – " + esc(S.division) + "</div><h2>" + esc(S.name) + ", you are an " + lv.name + "!</h2>" +
-      "<p>You scored " + sc.total + " out of 200 points" + (pr ? " and trained a <b>" + esc(pr.name) + "</b> model" + (a != null ? " that is <b>" + a + "% accurate</b>" : "") : "") + ".</p>" +
-      '<div class="breakdown"><div><small>Starter</small><b>' + sc.starter + "</b> <span>/ 40</span></div><div><small>Main</small><b>" + sc.main + "</b> <span>/ 120</span></div><div><small>Plenary</small><b>" + sc.plenary + "</b> <span>/ 40</span></div></div>" +
-      '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sync" id="syncState"></span><button class="btn ghost" id="retryBtn" type="button" style="color:#FFFFFF;border-color:rgba(255,255,255,.4)" hidden>Save again</button></div></section>' +
-      '<div class="card"><h3>Levels</h3><div class="levels-key">' + LEVELS.map(function (l, k) { var hi = LEVELS[k + 1] ? LEVELS[k + 1].min - 1 : 200; return '<div class="' + (l === lv ? "me" : "") + '"><b>' + l.name + "</b>" + l.min + "–" + hi + " points</div>"; }).join("") + "</div></div>" +
-      '<div class="card" id="boardCard" hidden><h3>Class leaderboard · ' + esc(S.cls) + " – " + esc(S.division) + '</h3><div style="overflow-x:auto"><table class="board" id="board"></table></div><p class="note">Updates when classmates finish. Press Refresh to check.</p><div class="actions"><button class="btn ghost" id="refreshBoard" type="button">Refresh</button></div></div>' +
-      '<div class="card"><h3>Finished early?</h3><p style="margin:0">Swap computers with a partner and test their model with your objects. Can you trick it? Tell them which class needs more images. Then try Activity Sheet 3.</p>' +
-      '<div class="actions"><button class="btn ghost" id="newPlayer" type="button">Next student – start a new quest</button></div>' +
-      '<div class="confirm" id="confirmBox" hidden style="margin-top:12px"><span>This clears ' + esc(S.name) + "’s game on this computer. Their results stay in the spreadsheet.</span>" + '<button class="btn" id="yes" type="button">Yes, new student</button><button class="btn ghost" id="no" type="button">Cancel</button></div></div>';
-    renderSync();
-    $("retryBtn").onclick = sendToSheet;
-    $("newPlayer").onclick = function () { $("confirmBox").hidden = false; };
-    $("no").onclick = function () { $("confirmBox").hidden = true; };
+    var t = tot();
+    app.innerHTML = '<section class="result pop"><div class="ring">' + t.all + "</div><h2>" + esc(S.name) + ", you are an " + levelName(t.all) + "!</h2>" +
+      '<div class="split"><span>Starter ' + t.st + "/40</span><span>Main " + t.mn + "/120</span><span>Plenary " + t.pl + "/40</span></div>" +
+      '<div class="row"><span class="sync" id="sync"></span><button class="btn" id="retry" type="button" hidden>Save again</button></div></section>' +
+      '<div class="card" id="boardCard" hidden><h2 style="font-size:24px">Leaderboard · ' + esc(S.cls + S.division) + '</h2><table class="board" id="board"></table><button class="btn link" id="refresh" type="button">Refresh</button></div>' +
+      '<div class="row"><button class="btn link" id="newP" type="button">Next student</button><span id="confirm" hidden>Clear this game? <button class="btn" id="yes" type="button">Yes</button> <button class="btn" id="no" type="button">No</button></span></div>';
+    showSync();
+    $("retry").onclick = sendToSheet;
+    $("newP").onclick = function () { $("confirm").hidden = false; };
+    $("no").onclick = function () { $("confirm").hidden = true; };
     $("yes").onclick = function () { S = fresh(); save(); render(); };
-    $("refreshBoard").onclick = loadBoard;
-    if (SHEET) { $("boardCard").hidden = false; setTimeout(loadBoard, 2500); }
+    $("refresh").onclick = board;
+    if (SHEET) { $("boardCard").hidden = false; setTimeout(board, 2500); }
     confetti();
   }
-  function loadBoard() {
-    var t = $("board"); if (!t) return;
-    t.innerHTML = "<tr><td>Loading…</td></tr>";
+  function board() {
+    var tb = $("board"); if (!tb) return;
+    tb.innerHTML = "<tr><td>Loading…</td></tr>";
     fetch(SHEET + (SHEET.indexOf("?") > -1 ? "&" : "?") + "action=board&sheet=" + encodeURIComponent(QUEST) + "&cls=" + encodeURIComponent(S.cls) + "&division=" + encodeURIComponent(S.division))
       .then(function (r) { return r.json(); })
       .then(function (rows) {
-        if (!rows || !rows.length) { t.innerHTML = "<tr><td>No scores yet.</td></tr>"; return; }
-        t.innerHTML = '<tr><th>#</th><th>Name</th><th style="text-align:right">Points</th></tr>' + rows.slice(0, 10).map(function (r, k) { return '<tr class="' + (r.name === S.name ? "me" : "") + '"><td>' + (k + 1) + "</td><td>" + esc(r.name) + '</td><td class="num">' + r.total + "</td></tr>"; }).join("");
+        tb.innerHTML = rows && rows.length ? rows.slice(0, 10).map(function (r, k) { return '<tr class="' + (r.name === S.name ? "me" : "") + '"><td>' + (k + 1) + "</td><td>" + esc(r.name) + '</td><td class="num">' + r.total + "</td></tr>"; }).join("") : "<tr><td>No scores yet.</td></tr>";
       })
-      .catch(function () { t.innerHTML = "<tr><td>The leaderboard could not load. Check the internet connection.</td></tr>"; });
+      .catch(function () { tb.innerHTML = "<tr><td>Could not load. Check the internet.</td></tr>"; });
   }
   function confetti() {
     if (reduce) return;
-    var c = $("confetti"), ctx = c.getContext("2d"); c.hidden = false;
+    var c = $("confetti"), x = c.getContext("2d"); c.hidden = false;
     var W = c.width = innerWidth, H = c.height = innerHeight, cols = ["#2A9D8F", "#E76F51", "#3A6FD8", "#7A55C7", "#FCA311"];
-    var P = Array.from({ length: 150 }, function () { return { x: Math.random() * W, y: -20 - Math.random() * H * .5, vx: (Math.random() - .5) * 3, vy: 2 + Math.random() * 3.5, r: 4 + Math.random() * 5, a: Math.random() * 6, va: (Math.random() - .5) * .3, col: cols[(Math.random() * 5) | 0] }; });
+    var P = Array.from({ length: 140 }, function () { return { x: Math.random() * W, y: -20 - Math.random() * H * .5, vx: (Math.random() - .5) * 3, vy: 2 + Math.random() * 3.5, r: 4 + Math.random() * 5, a: Math.random() * 6, va: (Math.random() - .5) * .3, col: cols[(Math.random() * 5) | 0] }; });
     var t0 = performance.now();
     (function f(now) {
-      ctx.clearRect(0, 0, W, H);
-      P.forEach(function (p) { p.x += p.vx; p.y += p.vy; p.a += p.va; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.col; ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore(); });
-      if (now - t0 < 3200) requestAnimationFrame(f); else { ctx.clearRect(0, 0, W, H); c.hidden = true; }
+      x.clearRect(0, 0, W, H);
+      P.forEach(function (p) { p.x += p.vx; p.y += p.vy; p.a += p.va; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillStyle = p.col; x.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); x.restore(); });
+      if (now - t0 < 3000) requestAnimationFrame(f); else { x.clearRect(0, 0, W, H); c.hidden = true; }
     })(t0);
   }
 
